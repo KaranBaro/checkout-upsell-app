@@ -2,7 +2,7 @@
 
 client_id = "86e837ef57f22430630a368cf068268d"
 name = "Grow Checkout"
-application_url = "https://grow-checkout.com"
+application_url = "https://skippo.in"
 embedded = true
 
 [build]
