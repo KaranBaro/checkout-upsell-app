@@ -21,6 +21,7 @@ export default function Upsells() {
     discountId: "",
     rules: [],
     status: "Draft",
+    recommendedProducts: [],
   });
 
   const resetForm = () => {
@@ -35,6 +36,7 @@ export default function Upsells() {
       discountId: "",
       rules: [],
       status: "Draft",
+      recommendedProducts: [],
     });
     setEditingId(null);
     setShowForm(false);
@@ -287,6 +289,37 @@ export default function Upsells() {
                 </div>
               </div>
 
+              {/* Upsell Products */}
+              <div>
+                <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 600 }}>
+                  Products To Show In Checkout
+                </h3>
+
+                <ProductSelector
+                  onProductsSelect={(products) =>
+                    setFormData({
+                      ...formData,
+                      recommendedProducts: products,
+                    })
+                  }
+                  initialProducts={formData.recommendedProducts}
+                />
+
+                {formData.recommendedProducts?.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "12px",
+                      background: "#f6f6f7",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {formData.recommendedProducts.length} product(s) selected for checkout upsell.
+                  </div>
+                )}
+              </div>
+
               {/* Trigger Rules */}
               <RuleBuilder
                 onRulesChange={(rules) => setFormData({ ...formData, rules })}
@@ -316,6 +349,7 @@ export default function Upsells() {
                   title={formData.title}
                   description={formData.description}
                   actionType={formData.actionType}
+                  recommendedProducts={formData.recommendedProducts}
                 />
               </div>
 
