@@ -1,15 +1,15 @@
-import { json } from "@remix-run/node";
+import { data } from "react-router";
 
 export async function loader({ request }) {
   const url = new URL(request.url);
   const shop = url.searchParams.get("shop");
 
   if (!shop) {
-    return json({ enabled: false, products: [] });
+    return data({ enabled: false, products: [] });
   }
 
   // Temporary static data for testing checkout extension
-  return json({
+  return data({
     enabled: true,
     title: "Recommended for you",
     description: "Add these products before checkout",
