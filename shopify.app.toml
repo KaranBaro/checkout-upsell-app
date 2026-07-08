@@ -26,7 +26,7 @@ optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://grow-checkout.com/api/auth" ]
+redirect_urls = [ "https://skippo.in/api/auth" ]
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
