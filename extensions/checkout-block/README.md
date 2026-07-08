@@ -1,27 +1,39 @@
-# Checkout UI Extension (stub)
+# Checkout UI Extension
 
-This directory contains a stub for a Shopify Checkout UI Extension that will
-render upsell blocks inside the checkout (Shopify Plus target).
+Checkout UI extensions let app developers build custom functionality that merchants can install at defined targets in the checkout flow. You can learn more about checkout UI extensions in Shopify’s [developer documentation](https://shopify.dev/api/checkout-extensions/checkout).
 
-Notes
+## Prerequisites
 
-- This is a scaffold only. Use the Shopify CLI to create a proper Checkout UI
-  Extension project and register it with your app. For example:
+Before you start building your extension, make sure that you’ve created a [development store](https://shopify.dev/docs/apps/tools/development-stores) with the [checkout extensibility developer preview](https://shopify.dev/docs/api/release-notes/developer-previews#previewing-new-features).
 
-  ```bash
-  shopify extension create checkout_ui_extension
-  ```
+## Your new Extension
 
-- The real extension should use `@shopify/checkout-ui-extensions-react` and the
-  extension SDK to interact with the checkout UI (add line items, listen for
-  cart changes, etc.).
-- The extension will call the app backend endpoint at
-  `/api/checkout/add-line-item` to create a checkout or return a checkout URL
-  (this scaffold uses the Storefront API via an access token).
+Your new extension contains the following files:
 
-Implementation checklist
+- `README.md`, the file you are reading right now.
+- `shopify.extension.toml`, the configuration file for your extension. This file defines your extension’s name, where it will appear in the checkout, and other metadata.
+- `src/Checkout.jsx`, the source code for your extension.
+- `locales/en.default.json` and `locales/fr.json`, which contain translations used to [localized your extension](https://shopify.dev/docs/apps/checkout/best-practices/localizing-ui-extensions).
 
-- Create extension with Shopify CLI
-- Implement UI using Checkout UI Extensions SDK
-- Wire Add/Remove actions to server endpoint or extension client APIs
-- Register extension in `shopify.app.toml` and deploy
+By default, your extension is configured to target the `purchase.checkout.block.render` [extension target](https://shopify.dev/docs/api/checkout-ui-extensions/extension-targets-overview). You will find the target in your `shopify.extension.toml`. The default target allows the merchant to configure where in the checkout *they* want your extension to appear. If you are building an extension that is tied to existing UI element in the checkout, such as the cart lines or shipping options, you can change the extension target so that your UI extension will render in the correct location. Check out the list of [all available extension targets](https://shopify.dev/docs/api/checkout-ui-extensions/extension-targets-overview) to get some inspiration for the kinds of content you can provide with checkout UI extensions.
+
+To build your extension, you will need to use APIs provided by Shopify that let you render content, and to read and write data in the checkout. The following resources will help you get started with checkout extensions:
+
+- [APIs by extension target](https://shopify.dev/docs/api/checkout-ui-extensions/targets)
+- [All APIs for reading and writing checkout data](https://shopify.dev/docs/api/checkout-ui-extensions/apis)
+- [Available components and their properties](https://shopify.dev/docs/api/checkout-ui-extensions/components)
+
+## Useful Links
+
+- [Checkout app documentation](https://shopify.dev/apps/checkout)
+- [Checkout UI extension documentation](https://shopify.dev/api/checkout-extensions)
+  - [Configuration](https://shopify.dev/docs/api/checkout-ui-extensions/configuration)
+  - [Extension Targets](https://shopify.dev/docs/api/checkout-ui-extensions/targets)
+  - [API Reference](https://shopify.dev/docs/api/checkout-ui-extensions/apis)
+  - [UI Components](https://shopify.dev/docs/api/checkout-ui-extensions/components)
+- [Checkout UI extension tutorials](https://shopify.dev/docs/apps/checkout)
+  - [Enable extended delivery instructions](https://shopify.dev/apps/checkout/delivery-instructions)
+  - [Creating a custom banner](https://shopify.dev/apps/checkout/custom-banners)
+  - [Thank you and order status pages](https://shopify.dev/docs/apps/checkout/thank-you-order-status)
+  - [Adding field validation](https://shopify.dev/apps/checkout/validation)
+  - [Localizing an extension](https://shopify.dev/apps/checkout/localize-ui-extensions)
