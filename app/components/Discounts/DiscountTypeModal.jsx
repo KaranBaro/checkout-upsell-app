@@ -1,10 +1,10 @@
 import PropTypes from "prop-types";
 
 const types = [
-  ["Amount off products", "Discount selected products or collections"],
-  ["Amount off order", "Discount the customer’s entire order"],
-  ["Buy X get Y", "Reward customers for buying selected items"],
-  ["Free shipping", "Offer free delivery with optional conditions"],
+  ["Amount off products", "Discount selected products or collections."],
+  ["Amount off order", "Discount the customer’s entire order."],
+  ["Buy X get Y", "Create a buy quantity X, get quantity Y offer."],
+  ["Free shipping", "Remove shipping charges with optional conditions."],
 ];
 
 export default function DiscountTypeModal({ onSelect, onClose }) {
@@ -14,8 +14,8 @@ export default function DiscountTypeModal({ onSelect, onClose }) {
       <section role="dialog" aria-modal="true" aria-labelledby="discount-type-title" style={{ position: "relative", width: "100%", maxWidth: "540px", borderRadius: "14px", background: "#fff", boxShadow: "0 20px 50px rgba(0,0,0,.2)", overflow: "hidden" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px" }}>
           <div>
-            <h2 id="discount-type-title" style={{ margin: 0, fontSize: "20px" }}>Select custom discount type</h2>
-            <p style={{ margin: "6px 0 0", color: "#6d7175", fontSize: "14px" }}>Create a new discount for this upsell offer</p>
+            <h2 id="discount-type-title" style={{ margin: 0, fontSize: "20px" }}>Select discount type</h2>
+            <p style={{ margin: "6px 0 0", color: "#6d7175", fontSize: "14px" }}>Choose the Shopify-style discount you want to configure.</p>
           </div>
           <button type="button" onClick={onClose} style={{ border: 0, background: "none", fontSize: "24px", cursor: "pointer" }}>×</button>
         </div>
