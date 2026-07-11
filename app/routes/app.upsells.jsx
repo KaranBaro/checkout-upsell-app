@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useUpsells from "../hooks/useUpsells";
+import { useOutletContext } from "react-router";
 import UpsellTable from "../components/Upsells/UpsellTable";
 import RuleBuilder from "../components/Upsells/RuleBuilder";
 import ProductSelector from "../components/Upsells/ProductSelector";
@@ -7,7 +7,7 @@ import CollectionSelector from "../components/Upsells/CollectionSelector";
 import UpsellPreview from "../components/Upsells/UpsellPreview";
 
 export default function Upsells() {
-  const { upsells, createUpsell, updateUpsell, deleteUpsell, toggleUpsellStatus } = useUpsells();
+  const { upsells, createUpsell, updateUpsell, deleteUpsell, toggleUpsellStatus } = useOutletContext();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({

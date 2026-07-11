@@ -1,5 +1,4 @@
 import { Link, useOutletContext } from "react-router";
-import useUpsells from "../hooks/useUpsells";
 
 const colors = {
   blue: { background: "#eff6ff", foreground: "#2563eb" },
@@ -9,8 +8,7 @@ const colors = {
 };
 
 export default function Dashboard() {
-  const { messages, discounts } = useOutletContext();
-  const { upsells } = useUpsells();
+  const { messages, discounts, upsells } = useOutletContext();
   const activeMessages = messages.filter(
     (message) => message.status === "Active",
   ).length;

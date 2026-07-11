@@ -3,6 +3,7 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
+import useUpsells from "../hooks/useUpsells";
 
 /* global process */
 
@@ -16,6 +17,7 @@ export const loader = async ({ request }) => {
 
 export default function App() {
   const { apiKey } = useLoaderData();
+  const upsellState = useUpsells();
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -57,7 +59,15 @@ export default function App() {
         <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
 
-      <Outlet context={{ messages, setMessages, discounts, setDiscounts }} />
+      <Outlet
+        context={{
+          messages,
+          setMessages,
+          discounts,
+          setDiscounts,
+          ...upsellState,
+        }}
+      />
     </AppProvider>
   );
 }
