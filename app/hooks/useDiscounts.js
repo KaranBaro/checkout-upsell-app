@@ -1,25 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-const defaultDiscounts = [
-  {
-    id: 1,
-    title: "Welcome offer",
-    code: "WELCOME10",
-    category: "Amount off order",
-    method: "Discount code",
-    type: "Percentage",
-    value: 10,
-    minimumRequirement: "amount",
-    minimumPurchase: 1000,
-    status: "Active",
-    eligibility: "all",
-    combinesWith: {
-      orderDiscounts: false,
-      productDiscounts: false,
-      shippingDiscounts: false,
-    },
-  },
-];
+const defaultDiscounts = [];
 
 export default function useDiscounts({ onChange } = {}) {
   const [discounts, setDiscountsState] = useState(defaultDiscounts);

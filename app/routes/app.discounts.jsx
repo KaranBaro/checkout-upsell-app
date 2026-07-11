@@ -12,6 +12,8 @@ export default function Discounts() {
   const [editingDiscount, setEditingDiscount] = useState(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const visibleDiscounts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -30,20 +32,79 @@ export default function Discounts() {
     setSelectedType(null);
   };
 
-  const saveDiscount = (savedDiscount) => {
+  const saveDiscount = async (savedDiscount) => {
+    setSaving(true);
+    setError("");
+
+    let result;
+    let response;
+
+    try {
+      response = await fetch("/api/shopify-discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discount: {
+            ...savedDiscount,
+            shopifyDiscountId: editingDiscount?.shopifyDiscountId,
+            shopifyDiscountClass: editingDiscount?.shopifyDiscountClass,
+            method: "Discount code",
+          },
+        }),
+      });
+      result = await response.json();
+    } catch (saveError) {
+      setSaving(false);
+      setError(saveError.message || "Could not create this discount in Shopify.");
+      return;
+    }
+
+    setSaving(false);
+
+    if (!response.ok || !result.ok) {
+      setError(result.error || "Could not create this discount in Shopify.");
+      return;
+    }
+
+    const nativeDiscount = result.discount;
     setDiscounts((current) =>
       editingDiscount
         ? current.map((discount) =>
-            discount.id === savedDiscount.id ? savedDiscount : discount,
+            discount.id === nativeDiscount.id ? nativeDiscount : discount,
           )
-        : [...current, savedDiscount],
+        : [...current, nativeDiscount],
     );
+    closeForm();
+  };
+
+  const deleteDiscount = async (discount) => {
+    if (!window.confirm(`Delete "${discount.title}"?`)) return;
+
+    setError("");
+    if (discount.shopifyDiscountId) {
+      const response = await fetch("/api/shopify-discounts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          shopifyDiscountId: discount.shopifyDiscountId,
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        setError(result.error || "Could not delete this discount in Shopify.");
+        return;
+      }
+    }
+
+    setDiscounts((current) => current.filter((item) => item.id !== discount.id));
   };
 
   return (
     <main style={{ minHeight: "100%", padding: "32px 24px 48px", background: "#f6f6f7" }}>
       {typePickerOpen && <DiscountTypeModal onClose={() => setTypePickerOpen(false)} onSelect={(type) => { setSelectedType(type); setTypePickerOpen(false); setFormOpen(true); }} />}
-      {formOpen && <DiscountForm initialDiscount={editingDiscount} selectedType={selectedType} onSave={saveDiscount} onClose={closeForm} />}
+      {formOpen && <DiscountForm initialDiscount={editingDiscount} selectedType={selectedType} onSave={saveDiscount} onClose={closeForm} saving={saving} />}
       <div style={{ width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "20px", marginBottom: "24px" }}>
           <div>
@@ -52,6 +113,12 @@ export default function Discounts() {
           </div>
           <button type="button" onClick={() => setTypePickerOpen(true)} style={{ padding: "11px 16px", border: 0, borderRadius: "8px", background: "#303030", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Create discount</button>
         </header>
+
+        {error && (
+          <div role="alert" style={{ marginBottom: "16px", padding: "12px 14px", border: "1px solid #fed3d1", borderRadius: "8px", background: "#fff4f4", color: "#8e1f0b" }}>
+            {error}
+          </div>
+        )}
 
         <section style={{ border: "1px solid #e1e3e5", borderRadius: "12px", background: "#fff", overflow: "hidden" }}>
           <div style={{ display: "flex", gap: "12px", padding: "16px", borderBottom: "1px solid #e1e3e5" }}>
@@ -62,7 +129,7 @@ export default function Discounts() {
           </div>
           <div style={{ display: "grid", gap: "12px", padding: "16px" }}>
             {visibleDiscounts.length ? visibleDiscounts.map((discount) => (
-              <DiscountCard key={discount.id} discount={discount} onEdit={(item) => { setEditingDiscount(item); setFormOpen(true); }} onDelete={(id) => setDiscounts((current) => current.filter((item) => item.id !== id))} />
+              <DiscountCard key={discount.id} discount={discount} onEdit={(item) => { setEditingDiscount(item); setFormOpen(true); }} onDelete={deleteDiscount} />
             )) : (
               <div style={{ padding: "42px 20px", textAlign: "center" }}>
                 <h2 style={{ margin: "0 0 8px", fontSize: "18px" }}>No discounts found</h2>

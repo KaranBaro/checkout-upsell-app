@@ -103,9 +103,10 @@ export default function DiscountForm({
   onSave,
   onClose,
   discountSource = "custom",
+  saving = false,
 }) {
   const category = initialDiscount?.category ?? selectedType ?? "Amount off order";
-  const [method, setMethod] = useState(initialDiscount?.method ?? "Discount code");
+  const [method] = useState("Discount code");
   const [title, setTitle] = useState(initialDiscount?.title ?? "");
   const [code, setCode] = useState(initialDiscount?.code ?? "");
   const [valueType, setValueType] = useState(initialDiscount?.type ?? "Percentage");
@@ -205,7 +206,6 @@ export default function DiscountForm({
     }
 
     onSave(discountData);
-    onClose();
   };
 
   const toggleCombination = (key) => {
@@ -288,20 +288,12 @@ export default function DiscountForm({
             <div style={{ display: "grid", gap: "16px" }}>
               <section style={sectionStyle}>
                 <h3 style={{ margin: "0 0 14px", fontSize: "15px" }}>Method</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <NativeRadio
-                    checked={method === "Discount code"}
-                    title="Discount code"
-                    description="Customers enter a code at checkout."
-                    onClick={() => setMethod("Discount code")}
-                  />
-                  <NativeRadio
-                    checked={method === "Automatic discount"}
-                    title="Automatic discount"
-                    description="Discount applies when conditions are met."
-                    onClick={() => setMethod("Automatic discount")}
-                  />
-                </div>
+                <NativeRadio
+                  checked
+                  title="Discount code"
+                  description="Created in Shopify and applied from checkout with an Apply button."
+                  onClick={() => {}}
+                />
               </section>
 
               <section style={sectionStyle}>
@@ -315,7 +307,7 @@ export default function DiscountForm({
                       id="discount-title"
                       value={title}
                       onChange={(event) => setTitle(event.target.value)}
-                      placeholder={method === "Automatic discount" ? "Weekend sale" : "Summer promotion"}
+                      placeholder="Summer promotion"
                       required
                       style={fieldStyle}
                     />
@@ -324,37 +316,35 @@ export default function DiscountForm({
                     </p>
                   </div>
 
-                  {method === "Discount code" && (
-                    <div>
-                      <label htmlFor="discount-code" style={labelStyle}>
-                        Discount code
-                      </label>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "10px" }}>
-                        <input
-                          id="discount-code"
-                          value={code}
-                          onChange={(event) => setCode(event.target.value)}
-                          placeholder="SUMMER20"
-                          required
-                          style={{ ...fieldStyle, textTransform: "uppercase" }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setCode(generateCode())}
-                          style={{
-                            padding: "10px 14px",
-                            border: "1px solid #c9cccf",
-                            borderRadius: "8px",
-                            background: "#fff",
-                            cursor: "pointer",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Generate
-                        </button>
-                      </div>
+                  <div>
+                    <label htmlFor="discount-code" style={labelStyle}>
+                      Discount code
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "10px" }}>
+                      <input
+                        id="discount-code"
+                        value={code}
+                        onChange={(event) => setCode(event.target.value)}
+                        placeholder="SUMMER20"
+                        required
+                        style={{ ...fieldStyle, textTransform: "uppercase" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCode(generateCode())}
+                        style={{
+                          padding: "10px 14px",
+                          border: "1px solid #c9cccf",
+                          borderRadius: "8px",
+                          background: "#fff",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Generate
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               </section>
 
@@ -771,17 +761,18 @@ export default function DiscountForm({
             </button>
             <button
               type="submit"
+              disabled={saving}
               style={{
                 padding: "10px 16px",
                 border: 0,
                 borderRadius: "8px",
-                background: "#303030",
+                background: saving ? "#8c9196" : "#303030",
                 color: "#fff",
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: saving ? "not-allowed" : "pointer",
               }}
             >
-              {initialDiscount ? "Update discount" : "Create discount"}
+              {saving ? "Saving..." : initialDiscount ? "Update discount" : "Create discount"}
             </button>
           </div>
         </form>
@@ -826,6 +817,7 @@ DiscountForm.propTypes = {
   }),
   selectedType: PropTypes.string,
   discountSource: PropTypes.string,
+  saving: PropTypes.bool,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };

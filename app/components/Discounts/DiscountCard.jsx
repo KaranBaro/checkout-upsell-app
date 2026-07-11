@@ -83,7 +83,7 @@ export default function DiscountCard({ discount, onEdit, onDelete }) {
           <button type="button" onClick={() => onEdit(discount)} style={buttonStyle}>Edit</button>
           <button
             type="button"
-            onClick={() => window.confirm(`Delete "${discount.title}"?`) && onDelete(discount.id)}
+            onClick={() => onDelete(discount)}
             style={{ ...buttonStyle, background: "#fff5f5", borderColor: "#fed7d7", color: "#b42318" }}
           >
             Delete

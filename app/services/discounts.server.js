@@ -40,12 +40,16 @@ function normalizeDiscount(discount) {
     customerGets: discount.customerGets || "",
     rewardType: discount.rewardType || "",
     rewardValue: Number(discount.rewardValue || 0),
+    source: discount.source || "",
+    shopifyDiscountId: discount.shopifyDiscountId || "",
+    shopifyDiscountClass: discount.shopifyDiscountClass || "",
   };
 }
 
 export function getActiveCheckoutDiscounts(discounts = []) {
   return discounts
     .filter((discount) => discount.status === "Active")
+    .filter((discount) => discount.source === "native" && discount.shopifyDiscountId)
     .map(normalizeDiscount)
     .filter((discount) => discount.method !== "Discount code" || discount.code);
 }

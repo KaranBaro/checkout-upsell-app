@@ -48,11 +48,11 @@ function DiscountCard({ discount, applied, canUpdateDiscountCodes }) {
 
   return (
     <s-box border="base" borderRadius="base" padding="base">
-      <s-stack gap="base">
+      <s-stack gap="small">
         <s-grid gridTemplateColumns="1fr auto" gap="base" alignItems="center">
           <s-stack gap="small">
             <s-text type="strong">{discount.title}</s-text>
-            <s-text>{formatOffer(discount)}</s-text>
+            <s-text color="subdued">Code: {discount.code}</s-text>
           </s-stack>
 
           {canApplyCode && (
@@ -65,28 +65,6 @@ function DiscountCard({ discount, applied, canUpdateDiscountCodes }) {
             </s-button>
           )}
         </s-grid>
-
-        {discount.method === "Discount code" ? (
-          <s-text color="subdued">Code: {discount.code}</s-text>
-        ) : (
-          <s-text color="subdued">Applies automatically when conditions are met.</s-text>
-        )}
-
-        <s-stack gap="small">
-          <s-text color="subdued">{formatMinimum(discount)}</s-text>
-          <s-text color="subdued">{formatEligibility(discount)}</s-text>
-          <s-text color="subdued">{formatCombinations(discount.combinesWith)}</s-text>
-          {formatDateRange(discount) && (
-            <s-text color="subdued">{formatDateRange(discount)}</s-text>
-          )}
-        </s-stack>
-
-        {discount.method === "Automatic discount" && (
-          <s-banner tone="info">
-            This checkout block displays the offer. Create the matching automatic
-            discount in Shopify Admin for price calculation.
-          </s-banner>
-        )}
 
         {discount.method === "Discount code" && !canUpdateDiscountCodes && (
           <s-banner tone="warning">
@@ -139,58 +117,4 @@ function shouldShowDiscount(discount, subtotal, cartQuantity) {
   }
 
   return true;
-}
-
-function formatOffer(discount) {
-  if (discount.category === "Buy X get Y") {
-    return `Buy ${discount.buyQuantity || 1}, get ${discount.getQuantity || 1}`;
-  }
-
-  if (discount.category === "Free shipping" || discount.type === "Free shipping") {
-    return "Free shipping";
-  }
-
-  if (discount.type === "Percentage") {
-    return `${discount.value || 0}% off`;
-  }
-
-  return `₹${Number(discount.value || 0).toLocaleString("en-IN")} off`;
-}
-
-function formatMinimum(discount) {
-  if (discount.minimumRequirement === "amount") {
-    return `Minimum purchase ₹${Number(discount.minimumPurchase || 0).toLocaleString("en-IN")}`;
-  }
-
-  if (discount.minimumRequirement === "quantity") {
-    return `Minimum ${discount.minimumQuantity || 1} item(s)`;
-  }
-
-  return "No minimum requirement";
-}
-
-function formatEligibility(discount) {
-  if (!discount.eligibility || discount.eligibility === "all") return "All customers";
-  if (discount.eligibility === "segments") return "Specific customer segments";
-  return "Specific customers";
-}
-
-function formatCombinations(combinesWith = {}) {
-  const enabled = [
-    combinesWith.productDiscounts && "product discounts",
-    combinesWith.orderDiscounts && "order discounts",
-    combinesWith.shippingDiscounts && "shipping discounts",
-  ].filter(Boolean);
-
-  return enabled.length ? `Combines with ${enabled.join(", ")}` : "Cannot combine with other discounts";
-}
-
-function formatDateRange(discount) {
-  if (!discount.startsAt && !discount.endsAt) return "";
-  if (discount.startsAt && discount.endsAt) {
-    return `Active ${discount.startsAt} to ${discount.endsAt}`;
-  }
-  if (discount.startsAt) return `Starts ${discount.startsAt}`;
-
-  return `Ends ${discount.endsAt}`;
 }
