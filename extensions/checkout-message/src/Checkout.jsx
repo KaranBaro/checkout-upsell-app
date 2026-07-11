@@ -1,39 +1,19 @@
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
-import { useEffect, useState } from "preact/hooks";
 
-const API_BASE_URL = "https://skippo.in";
+const CHECKOUT_MESSAGES_METAFIELD = {
+  namespace: "$app",
+  key: "checkoutMessages",
+};
 
 export default async () => {
   render(<CheckoutMessage />, document.body);
 };
 
 function CheckoutMessage() {
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const messages = getCheckoutMessages();
 
-  useEffect(() => {
-    async function loadMessages() {
-      try {
-        const shop = shopify.shop.myshopifyDomain;
-        const response = await fetch(
-          `${API_BASE_URL}/api/checkout-messages?shop=${encodeURIComponent(shop)}`,
-        );
-        const data = await response.json();
-
-        setMessages(data.enabled ? data.messages : []);
-      } catch (error) {
-        console.error("Checkout message fetch error", error);
-        setMessages([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadMessages();
-  }, []);
-
-  if (isLoading || messages.length === 0) return null;
+  if (messages.length === 0) return null;
 
   return (
     <s-stack gap="small">
@@ -48,6 +28,27 @@ function CheckoutMessage() {
       ))}
     </s-stack>
   );
+}
+
+function getCheckoutMessages() {
+  const checkoutMessages = shopify.appMetafields.value.find(
+    (appMetafield) =>
+      appMetafield.metafield.namespace === CHECKOUT_MESSAGES_METAFIELD.namespace &&
+      appMetafield.metafield.key === CHECKOUT_MESSAGES_METAFIELD.key,
+  );
+
+  if (!checkoutMessages?.metafield?.value) return [];
+
+  try {
+    const messages = JSON.parse(checkoutMessages.metafield.value);
+
+    return Array.isArray(messages)
+      ? messages.filter((message) => message.message)
+      : [];
+  } catch (error) {
+    console.error("Checkout message metafield parse error", error);
+    return [];
+  }
 }
 
 function getBannerTone(type) {

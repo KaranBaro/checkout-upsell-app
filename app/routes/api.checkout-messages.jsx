@@ -1,4 +1,9 @@
-import { getActiveCheckoutMessages, saveMessages } from "../services/messages.server";
+import { authenticate } from "../shopify.server";
+import {
+  getActiveCheckoutMessages,
+  saveMessages,
+  syncCheckoutMessagesMetafield,
+} from "../services/messages.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,8 +38,11 @@ export async function action({ request }) {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  const { admin, session } = await authenticate.admin(request);
   const body = await request.json();
-  const messages = saveMessages(body.shop, body.messages);
+  const shop = body.shop || session.shop;
+  const messages = saveMessages(shop, body.messages);
+  await syncCheckoutMessagesMetafield(admin, shop, messages);
 
   return json({
     ok: true,

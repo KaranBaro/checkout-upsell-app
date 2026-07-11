@@ -17,6 +17,11 @@ const defaultMessages = [
   },
 ];
 
+export const CHECKOUT_MESSAGES_METAFIELD = {
+  namespace: "$app",
+  key: "checkoutMessages",
+};
+
 const messageStore = global.checkoutMessageStore ?? new Map();
 global.checkoutMessageStore = messageStore;
 
@@ -58,4 +63,70 @@ export function getActiveCheckoutMessages(shop) {
   return getMessages(shop).filter(
     (message) => message.status === "Active" && message.message,
   );
+}
+
+export async function syncCheckoutMessagesMetafield(admin, shop, messages) {
+  const activeMessages = (messages ?? getActiveCheckoutMessages(shop))
+    .filter((message) => message.status === "Active" && message.message)
+    .map((message) => ({
+      id: message.id,
+      title: message.title,
+      type: message.type,
+      message: message.message,
+    }));
+
+  const installationResponse = await admin.graphql(
+    `#graphql
+      query CurrentAppInstallation {
+        currentAppInstallation {
+          id
+        }
+      }
+    `,
+  );
+  const installationBody = await installationResponse.json();
+  const ownerId = installationBody.data?.currentAppInstallation?.id;
+
+  if (!ownerId) {
+    throw new Error("Unable to find current app installation");
+  }
+
+  const metafieldResponse = await admin.graphql(
+    `#graphql
+      mutation SyncCheckoutMessages($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            id
+            namespace
+            key
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        metafields: [
+          {
+            ownerId,
+            namespace: CHECKOUT_MESSAGES_METAFIELD.namespace,
+            key: CHECKOUT_MESSAGES_METAFIELD.key,
+            type: "json",
+            value: JSON.stringify(activeMessages),
+          },
+        ],
+      },
+    },
+  );
+  const metafieldBody = await metafieldResponse.json();
+  const errors = metafieldBody.data?.metafieldsSet?.userErrors ?? [];
+
+  if (errors.length > 0) {
+    throw new Error(errors.map((error) => error.message).join(", "));
+  }
+
+  return activeMessages;
 }

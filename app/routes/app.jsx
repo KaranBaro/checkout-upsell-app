@@ -4,17 +4,22 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import useUpsells from "../hooks/useUpsells";
-import { getMessages } from "../services/messages.server";
+import {
+  getMessages,
+  syncCheckoutMessagesMetafield,
+} from "../services/messages.server";
 
 /* global process */
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const messages = getMessages(session.shop);
+  await syncCheckoutMessagesMetafield(admin, session.shop, messages);
 
   return {
     apiKey: process.env.SHOPIFY_API_KEY || "",
     shop: session.shop,
-    messages: getMessages(session.shop),
+    messages,
   };
 };
 
