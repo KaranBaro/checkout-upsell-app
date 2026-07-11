@@ -43,7 +43,10 @@ export default function Upsells() {
   };
 
   const handleEdit = (upsell) => {
-    setFormData(upsell);
+    setFormData({
+      ...upsell,
+      layout: upsell.layout === "slider" ? "grid" : upsell.layout,
+    });
     setEditingId(upsell.id);
     setShowForm(true);
   };
@@ -185,13 +188,12 @@ export default function Upsells() {
                       </label>
                       <select
                         id="layout"
-                        value={formData.layout}
+                        value={formData.layout === "slider" ? "grid" : formData.layout}
                         onChange={(e) => setFormData({ ...formData, layout: e.target.value })}
                         style={fieldStyle}
                       >
                         <option value="grid">Grid (⊞)</option>
                         <option value="stack">Stack (≡)</option>
-                        <option value="slider">Slider (▶)</option>
                       </select>
                     </div>
                     <div>

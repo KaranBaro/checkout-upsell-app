@@ -38,10 +38,27 @@ function CheckoutUpsell() {
 
 function ProductsLayout({ upsell, cartLines }) {
   const products = upsell.recommendedProducts || [];
+  const layout = upsell.layout === "stack" ? "stack" : "grid";
 
-  if (upsell.layout === "grid") {
+  if (layout === "stack") {
     return (
-      <s-grid gridTemplateColumns="1fr 1fr" gap="base">
+      <s-scroll-box overflow="auto auto" maxBlockSize="430px" maxInlineSize="100%">
+        <s-stack gap="base">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id || product.title}
+              product={product}
+              cartLine={findCartLine(product, cartLines)}
+            />
+          ))}
+        </s-stack>
+      </s-scroll-box>
+    );
+  }
+
+  return (
+    <s-scroll-box overflow="auto auto" maxBlockSize="430px" maxInlineSize="100%">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
         {products.map((product) => (
           <ProductCard
             key={product.id || product.title}
@@ -50,37 +67,6 @@ function ProductsLayout({ upsell, cartLines }) {
           />
         ))}
       </s-grid>
-    );
-  }
-
-  if (upsell.layout === "slider") {
-    return (
-      <s-scroll-box overflow="hidden auto" maxInlineSize="100%">
-        <s-stack direction="inline" gap="base">
-          {products.map((product) => (
-            <s-box key={product.id || product.title} inlineSize="260px">
-              <ProductCard
-                product={product}
-                cartLine={findCartLine(product, cartLines)}
-              />
-            </s-box>
-          ))}
-        </s-stack>
-      </s-scroll-box>
-    );
-  }
-
-  return (
-    <s-scroll-box overflow="auto hidden" maxBlockSize="270px">
-      <s-stack gap="base">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id || product.title}
-            product={product}
-            cartLine={findCartLine(product, cartLines)}
-          />
-        ))}
-      </s-stack>
     </s-scroll-box>
   );
 }

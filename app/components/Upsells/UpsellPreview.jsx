@@ -7,7 +7,9 @@ export default function UpsellPreview({
   description = "We think you'll love these",
   actionType = "recommend",
 }) {
-  const [selectedLayout, setSelectedLayout] = useState(layout);
+  const [selectedLayout, setSelectedLayout] = useState(
+    layout === "slider" ? "grid" : layout,
+  );
 
   const mockProducts = [
     { id: "1", title: "Product A", price: "$99", image: "🖼️" },
@@ -18,7 +20,6 @@ export default function UpsellPreview({
   const layouts = [
     { value: "grid", label: "Grid", icon: "⊞" },
     { value: "stack", label: "Stack", icon: "≡" },
-    { value: "slider", label: "Slider", icon: "▶" },
   ];
 
   const renderGridLayout = () => (
@@ -45,30 +46,6 @@ export default function UpsellPreview({
           <p style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#005bd3" }}>{product.price}</p>
         </div>
       ))}
-    </div>
-  );
-
-  const renderSliderLayout = () => (
-    <div style={{ overflow: "hidden", borderRadius: "8px" }}>
-      <div style={{ display: "flex", gap: "12px", overflowX: "auto", padding: "12px", background: "#f6f6f7" }}>
-        {mockProducts.map((product) => (
-          <div
-            key={product.id}
-            style={{
-              flex: "0 0 200px",
-              padding: "12px",
-              border: "1px solid #e1e3e5",
-              borderRadius: "8px",
-              background: "#fff",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: "48px", marginBottom: "8px" }}>{product.image}</div>
-            <p style={{ margin: "0 0 4px", fontSize: "12px", fontWeight: 600 }}>{product.title}</p>
-            <p style={{ margin: "4px 0 0", fontSize: "13px", fontWeight: 700, color: "#005bd3" }}>{product.price}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 
@@ -107,7 +84,6 @@ export default function UpsellPreview({
       <div style={{ minHeight: "200px" }}>
         {selectedLayout === "grid" && renderGridLayout()}
         {selectedLayout === "stack" && renderStackLayout()}
-        {selectedLayout === "slider" && renderSliderLayout()}
       </div>
 
       <div style={{ marginTop: "16px", display: "grid", gap: "10px" }}>
@@ -126,4 +102,5 @@ UpsellPreview.propTypes = {
   layout: PropTypes.oneOf(["grid", "stack", "slider"]),
   title: PropTypes.string,
   description: PropTypes.string,
+  actionType: PropTypes.oneOf(["recommend", "directAdd"]),
 };

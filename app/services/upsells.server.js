@@ -23,7 +23,7 @@ export function getActiveCheckoutUpsells(upsells = []) {
       id: upsell.id,
       title: upsell.title || "Recommended for you",
       description: upsell.description || "",
-      layout: upsell.layout || "stack",
+      layout: upsell.layout === "stack" ? "stack" : "grid",
       actionType: upsell.actionType || "recommend",
       targetType: upsell.targetType || "all",
       targetProducts: (upsell.targetProducts || []).map(normalizeProduct),
