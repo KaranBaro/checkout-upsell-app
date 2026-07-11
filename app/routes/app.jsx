@@ -4,38 +4,24 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
 import useUpsells from "../hooks/useUpsells";
+import { getMessages } from "../services/messages.server";
 
 /* global process */
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
 
   return {
     apiKey: process.env.SHOPIFY_API_KEY || "",
+    shop: session.shop,
+    messages: getMessages(session.shop),
   };
 };
 
 export default function App() {
-  const { apiKey } = useLoaderData();
+  const { apiKey, shop, messages: initialMessages } = useLoaderData();
   const upsellState = useUpsells();
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      category: "Amount off order",
-      method: "Discount code",
-      title: "Free Shipping Above ₹5000",
-      type: "Shipping",
-      message: "Free shipping on orders above ₹5000",
-      status: "Active",
-    },
-    {
-      id: 2,
-      title: "Save 10% With UPI",
-      type: "Discount",
-      message: "Pay with UPI and save 10% on your order",
-      status: "Active",
-    },
-  ]);
+  const [messages, setMessages] = useState(initialMessages);
   const [discounts, setDiscounts] = useState([
     {
       id: 1,
@@ -63,6 +49,7 @@ export default function App() {
         context={{
           messages,
           setMessages,
+          shop,
           discounts,
           setDiscounts,
           ...upsellState,

@@ -1,58 +1,58 @@
-import '@shopify/ui-extensions/preact';
-import {render} from "preact";
+import "@shopify/ui-extensions/preact";
+import { render } from "preact";
+import { useEffect, useState } from "preact/hooks";
 
-// 1. Export the extension
+const API_BASE_URL = "https://skippo.in";
+
 export default async () => {
-  render(<Extension />, document.body)
+  render(<CheckoutMessage />, document.body);
 };
 
-function Extension() {
-  // 2. Check instructions for feature availability
-  if (!shopify.instructions.value.metafields.canSetCartMetafields) {
-    return (
-      <s-banner heading="checkout-message" tone="warning">
-        {shopify.i18n.translate("metafieldChangesAreNotSupported")}
-      </s-banner>
-    );
-  }
+function CheckoutMessage() {
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const freeGiftRequested = shopify.appMetafields.value.find(
-    (appMetafield) =>
-      appMetafield.target.type === "cart" &&
-      appMetafield.metafield.namespace === "$app" &&
-      appMetafield.metafield.key === "requestedFreeGift",
-  );
+  useEffect(() => {
+    async function loadMessages() {
+      try {
+        const shop = shopify.shop.myshopifyDomain;
+        const response = await fetch(
+          `${API_BASE_URL}/api/checkout-messages?shop=${encodeURIComponent(shop)}`,
+        );
+        const data = await response.json();
 
-  // 3. Render a UI
+        setMessages(data.enabled ? data.messages : []);
+      } catch (error) {
+        console.error("Checkout message fetch error", error);
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadMessages();
+  }, []);
+
+  if (isLoading || messages.length === 0) return null;
+
   return (
-    <s-banner heading="checkout-message">
-      <s-stack gap="base">
-        <s-text>
-          {shopify.i18n.translate("welcome", {
-            target: <s-text type="emphasis">{shopify.extension.target}</s-text>,
-          })}
-        </s-text>
-        <s-checkbox
-          checked={freeGiftRequested?.metafield?.value === "true"}
-          onChange={onCheckboxChange}
-          label={shopify.i18n.translate("iWouldLikeAFreeGiftWithMyOrder")}
-        />
-      </s-stack>
-    </s-banner>
+    <s-stack gap="small">
+      {messages.map((message) => (
+        <s-banner
+          key={message.id}
+          heading={message.title || "Checkout message"}
+          tone={getBannerTone(message.type)}
+        >
+          <s-text>{message.message}</s-text>
+        </s-banner>
+      ))}
+    </s-stack>
   );
+}
 
-  async function onCheckboxChange(event) {
-    const isChecked = event.target.checked;
-    // 4. Call the API to modify checkout
-    const result = await shopify.applyMetafieldChange({
-      type: "updateCartMetafield",
-      metafield: {
-        namespace: "$app",
-        key: "requestedFreeGift",
-        value: isChecked ? "true" : "false",
-        type: "boolean",
-      },
-    });
-    console.log("applyMetafieldChange result", result);
-  }
+function getBannerTone(type) {
+  if (type === "Discount") return "success";
+  if (type === "Shipping") return "info";
+
+  return "info";
 }

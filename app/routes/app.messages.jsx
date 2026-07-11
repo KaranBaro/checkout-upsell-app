@@ -7,16 +7,30 @@ import MessageForm from "../components/Messages/MessageForm";
 export default function Messages() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
-  const { messages, setMessages } = useOutletContext();
+  const { messages, setMessages, shop } = useOutletContext();
+
+  const persistMessages = async (nextMessages) => {
+    setMessages(nextMessages);
+
+    try {
+      await fetch("/api/checkout-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, messages: nextMessages }),
+      });
+    } catch (error) {
+      console.error("Failed to save checkout messages:", error);
+    }
+  };
 
   const handleSaveMessage = (newMessage) => {
-    setMessages((currentMessages) =>
-      editingMessage
-        ? currentMessages.map((message) =>
-            message.id === newMessage.id ? newMessage : message,
-          )
-        : [...currentMessages, newMessage],
-    );
+    const nextMessages = editingMessage
+      ? messages.map((message) =>
+          message.id === newMessage.id ? newMessage : message,
+        )
+      : [...messages, newMessage];
+
+    persistMessages(nextMessages);
   };
 
   const handleCloseForm = () => {
@@ -90,8 +104,8 @@ export default function Messages() {
           setIsFormOpen(true);
         }}
         onDelete={(messageId) => {
-          setMessages((currentMessages) =>
-            currentMessages.filter((message) => message.id !== messageId),
+          persistMessages(
+            messages.filter((message) => message.id !== messageId),
           );
         }}
       />
