@@ -1,14 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export default function useUpsells() {
-  const [upsells, setUpsells] = useState(() => {
+  const [upsells, setUpsells] = useState([]);
+
+  useEffect(() => {
     try {
       const stored = localStorage.getItem("upsells");
-      return stored ? JSON.parse(stored) : [];
+      setUpsells(stored ? JSON.parse(stored) : []);
     } catch {
-      return [];
+      setUpsells([]);
     }
-  });
+  }, []);
 
   const saveToStorage = useCallback((data) => {
     try {

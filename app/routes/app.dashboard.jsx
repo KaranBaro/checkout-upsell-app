@@ -1,4 +1,5 @@
 import { Link, useOutletContext } from "react-router";
+import useUpsells from "../hooks/useUpsells";
 
 const colors = {
   blue: { background: "#eff6ff", foreground: "#2563eb" },
@@ -9,6 +10,7 @@ const colors = {
 
 export default function Dashboard() {
   const { messages, discounts } = useOutletContext();
+  const { upsells } = useUpsells();
   const activeMessages = messages.filter(
     (message) => message.status === "Active",
   ).length;
@@ -16,6 +18,10 @@ export default function Dashboard() {
   const activeDiscounts = discounts.filter(
     (discount) => discount.status === "Active",
   ).length;
+  const activeUpsells = upsells.filter(
+    (upsell) => upsell.status === "Active",
+  ).length;
+  const draftUpsells = upsells.length - activeUpsells;
 
   const stats = [
     {
@@ -36,8 +42,8 @@ export default function Dashboard() {
     },
     {
       title: "Upsell rules",
-      value: 0,
-      detail: "No rules configured",
+      value: upsells.length,
+      detail: `${activeUpsells} active · ${draftUpsells} draft`,
       to: "/app/upsells",
       icon: "↗",
       color: colors.purple,
