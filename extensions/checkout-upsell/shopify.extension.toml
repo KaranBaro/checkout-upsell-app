@@ -35,7 +35,7 @@ api_access = true
 
 [[extensions.metafields]]
 namespace = "$app"
-key = "requestedFreeGift"
+key = "checkoutUpsells"
 
 # Defines settings that will be collected from merchants installing
 # your extension. Learn more:

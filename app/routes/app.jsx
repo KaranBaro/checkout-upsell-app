@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
@@ -25,7 +25,18 @@ export const loader = async ({ request }) => {
 
 export default function App() {
   const { apiKey, shop, messages: initialMessages } = useLoaderData();
-  const upsellState = useUpsells();
+  const syncUpsells = useCallback(async (nextUpsells) => {
+    try {
+      await fetch("/api/checkout-upsells", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, upsells: nextUpsells }),
+      });
+    } catch (error) {
+      console.error("Failed to sync checkout upsells:", error);
+    }
+  }, [shop]);
+  const upsellState = useUpsells({ onChange: syncUpsells });
   const [messages, setMessages] = useState(initialMessages);
   const [discounts, setDiscounts] = useState([
     {

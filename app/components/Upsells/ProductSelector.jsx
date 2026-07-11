@@ -1,66 +1,135 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
+
+function formatProduct(product) {
+  const firstVariant = product.variants?.[0];
+  const image = product.images?.[0] || firstVariant?.image;
+
+  return {
+    id: product.id,
+    title: product.title,
+    handle: product.handle,
+    description: product.descriptionHtml?.replace(/<[^>]*>/g, "") || "",
+    image: image?.originalSrc || image?.url,
+    price: firstVariant?.price ? `₹${firstVariant.price}` : "",
+    variantId: firstVariant?.id,
+  };
+}
 
 export default function ProductSelector({ onProductsSelect, initialProducts = [] }) {
+  const shopify = useAppBridge();
   const [selectedProducts, setSelectedProducts] = useState(initialProducts);
-  const [mockProducts] = useState([
-    { id: "gid://shopify/Product/1", title: "Product A", handle: "product-a" },
-    { id: "gid://shopify/Product/2", title: "Product B", handle: "product-b" },
-    { id: "gid://shopify/Product/3", title: "Product C", handle: "product-c" },
-    { id: "gid://shopify/Product/4", title: "Product D", handle: "product-d" },
-    { id: "gid://shopify/Product/5", title: "Product E", handle: "product-e" },
-  ]);
 
-  const handleToggleProduct = (product) => {
-    const isSelected = selectedProducts.some(p => p.id === product.id);
-    const updated = isSelected
-      ? selectedProducts.filter(p => p.id !== product.id)
-      : [...selectedProducts, product];
+  const handleSelectProducts = async () => {
+    const selection = await shopify.resourcePicker({
+      type: "product",
+      action: "select",
+      multiple: true,
+      filter: {
+        hidden: false,
+        variants: true,
+        draft: false,
+        archived: false,
+      },
+      selectionIds: selectedProducts.map((product) => ({
+        id: product.id,
+        variants: product.variantId ? [{ id: product.variantId }] : undefined,
+      })),
+    });
+
+    if (!selection) return;
+
+    const products = selection.map(formatProduct);
+    setSelectedProducts(products);
+    onProductsSelect(products);
+  };
+
+  const removeProduct = (productId) => {
+    const updated = selectedProducts.filter((product) => product.id !== productId);
     setSelectedProducts(updated);
     onProductsSelect(updated);
   };
 
   return (
     <div style={{ padding: "16px", background: "#f6f6f7", borderRadius: "10px" }}>
-      <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 600 }}>
-        Select Products ({selectedProducts.length})
-      </h3>
-      <p style={{ margin: "0 0 16px", color: "#6d7175", fontSize: "13px" }}>
-        Choose products that trigger this upsell
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+        <div>
+          <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 600 }}>
+            Select Products ({selectedProducts.length})
+          </h3>
+          <p style={{ margin: 0, color: "#6d7175", fontSize: "13px" }}>
+            Choose products from this Shopify store
+          </p>
+        </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px" }}>
-        {mockProducts.map((product) => {
-          const isSelected = selectedProducts.some(p => p.id === product.id);
-          return (
-            <button
-              key={product.id}
-              type="button"
-              onClick={() => handleToggleProduct(product)}
-              style={{
-                padding: "12px",
-                border: isSelected ? "2px solid #005bd3" : "1px solid #c9cccf",
-                borderRadius: "8px",
-                background: isSelected ? "#f1f8ff" : "#fff",
-                textAlign: "left",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-            >
-              <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
-                {isSelected && "✓ "}{product.title}
-              </div>
-              <div style={{ fontSize: "12px", color: "#6d7175" }}>{product.handle}</div>
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          onClick={handleSelectProducts}
+          style={{
+            padding: "10px 14px",
+            border: 0,
+            borderRadius: "8px",
+            background: "#303030",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Select products
+        </button>
       </div>
 
       {selectedProducts.length > 0 && (
-        <div style={{ marginTop: "16px", padding: "12px", background: "#fff", borderRadius: "8px" }}>
-          <p style={{ margin: 0, fontSize: "13px", color: "#6d7175" }}>
-            Selected: {selectedProducts.map(p => p.title).join(", ")}
-          </p>
+        <div style={{ display: "grid", gap: "10px" }}>
+          {selectedProducts.map((product) => (
+            <div
+              key={product.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: product.image ? "48px 1fr auto" : "1fr auto",
+                gap: "12px",
+                alignItems: "center",
+                padding: "12px",
+                background: "#fff",
+                border: "1px solid #e1e3e5",
+                borderRadius: "8px",
+              }}
+            >
+              {product.image && (
+                <img
+                  src={product.image}
+                  alt={product.title}
+                  style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "6px" }}
+                />
+              )}
+
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "13px", fontWeight: 600 }}>{product.title}</div>
+                <div style={{ fontSize: "12px", color: "#6d7175" }}>
+                  {product.handle}
+                  {product.variantId ? " · Addable in checkout" : " · Missing variant"}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => removeProduct(product.id)}
+                style={{
+                  padding: "8px 10px",
+                  border: "1px solid #ffd6d6",
+                  borderRadius: "8px",
+                  background: "#fff5f5",
+                  color: "#d72c0d",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -74,6 +143,10 @@ ProductSelector.propTypes = {
       id: PropTypes.string.isRequired,
       title: PropTypes.string.isRequired,
       handle: PropTypes.string,
+      description: PropTypes.string,
+      image: PropTypes.string,
+      price: PropTypes.string,
+      variantId: PropTypes.string,
     })
   ),
 };

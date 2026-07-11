@@ -1,28 +1,47 @@
-import { data } from "react-router";
+import { authenticate } from "../shopify.server";
+import {
+  getActiveCheckoutUpsells,
+  syncCheckoutUpsellsMetafield,
+} from "../services/upsells.server";
 
-export async function loader({ request }) {
-  const url = new URL(request.url);
-  const shop = url.searchParams.get("shop");
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-  if (!shop) {
-    return data({ enabled: false, products: [] });
+function json(data, init = {}) {
+  return new Response(JSON.stringify(data), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+      ...init.headers,
+    },
+  });
+}
+
+export async function loader() {
+  return json({
+    enabled: false,
+    upsells: [],
+  });
+}
+
+export async function action({ request }) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Temporary static data for testing checkout extension
-  return data({
-    enabled: true,
-    title: "Recommended for you",
-    description: "Add these products before checkout",
-    layout: "stack",
-    products: [
-      {
-        title: "Sample Upsell Product",
-        description: "Perfect add-on for your order",
-        image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-1_large.png",
-        price: "₹999",
-        variantId: "gid://shopify/ProductVariant/YOUR_VARIANT_ID",
-        discountLabel: "Special checkout offer",
-      },
-    ],
+  const { admin } = await authenticate.admin(request);
+  const body = await request.json();
+  const upsells = Array.isArray(body.upsells) ? body.upsells : [];
+  const checkoutUpsells = await syncCheckoutUpsellsMetafield(admin, upsells);
+
+  return json({
+    ok: true,
+    enabled: checkoutUpsells.length > 0,
+    upsells: checkoutUpsells,
+    preview: getActiveCheckoutUpsells(upsells),
   });
 }
