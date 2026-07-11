@@ -27,26 +27,27 @@ function CheckoutUpsell() {
         <s-stack key={upsell.id} gap="base">
           <s-stack gap="small">
             <s-text type="strong">{upsell.title || "Recommended for you"}</s-text>
-            {upsell.description && (
-              <s-text color="subdued">{upsell.description}</s-text>
-            )}
           </s-stack>
 
-          <ProductsLayout upsell={upsell} />
+          <ProductsLayout upsell={upsell} cartLines={cartLines} />
         </s-stack>
       ))}
     </s-stack>
   );
 }
 
-function ProductsLayout({ upsell }) {
+function ProductsLayout({ upsell, cartLines }) {
   const products = upsell.recommendedProducts || [];
 
   if (upsell.layout === "grid") {
     return (
       <s-grid gridTemplateColumns="1fr 1fr" gap="base">
         {products.map((product) => (
-          <ProductCard key={product.id || product.title} product={product} actionType={upsell.actionType} compact />
+          <ProductCard
+            key={product.id || product.title}
+            product={product}
+            cartLine={findCartLine(product, cartLines)}
+          />
         ))}
       </s-grid>
     );
@@ -54,66 +55,98 @@ function ProductsLayout({ upsell }) {
 
   if (upsell.layout === "slider") {
     return (
-      <s-scroll-view direction="inline">
+      <s-scroll-box overflow="hidden auto" maxInlineSize="100%">
         <s-stack direction="inline" gap="base">
           {products.map((product) => (
-            <s-box key={product.id || product.title} inlineSize="220px">
-              <ProductCard product={product} actionType={upsell.actionType} compact />
+            <s-box key={product.id || product.title} inlineSize="260px">
+              <ProductCard
+                product={product}
+                cartLine={findCartLine(product, cartLines)}
+              />
             </s-box>
           ))}
         </s-stack>
-      </s-scroll-view>
+      </s-scroll-box>
     );
   }
 
   return (
-    <s-stack gap="base">
-      {products.map((product) => (
-        <ProductCard key={product.id || product.title} product={product} actionType={upsell.actionType} />
-      ))}
-    </s-stack>
+    <s-scroll-box overflow="auto hidden" maxBlockSize="270px">
+      <s-stack gap="base">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id || product.title}
+            product={product}
+            cartLine={findCartLine(product, cartLines)}
+          />
+        ))}
+      </s-stack>
+    </s-scroll-box>
   );
 }
 
-function ProductCard({ product, actionType, compact = false }) {
+function ProductCard({ product, cartLine }) {
   const canAdd = Boolean(product.variantId);
+  const canRemove = Boolean(cartLine?.id);
 
   return (
     <s-box border="base" borderRadius="base" padding="base">
       <s-grid
-        gridTemplateColumns={compact ? "1fr" : "64px 1fr auto"}
+        gridTemplateColumns={product.image ? "56px 1fr auto" : "1fr auto"}
         gap="base"
         alignItems="center"
       >
-        {!compact && product.image && (
-          <s-image src={product.image} alt={product.title} />
+        {product.image && (
+          <s-image
+            src={product.image}
+            alt={product.title}
+            inlineSize="56px"
+            aspectRatio={1}
+            borderRadius="base"
+          />
         )}
 
         <s-stack gap="small">
           <s-text type="strong">{product.title}</s-text>
-          {product.description && (
-            <s-text color="subdued">{product.description}</s-text>
-          )}
-          {product.discountLabel && (
-            <s-text color="success">{product.discountLabel}</s-text>
-          )}
           {product.price && <s-text type="strong">{product.price}</s-text>}
         </s-stack>
 
-        {actionType === "directAdd" && canAdd && (
-          <s-button variant="secondary" onClick={() => addProduct(product.variantId)}>
-            Add
-          </s-button>
-        )}
+        <s-stack gap="small">
+          {canAdd && (
+            <s-button variant="secondary" onClick={() => addProduct(product.variantId)}>
+              Add
+            </s-button>
+          )}
+
+          {canRemove && (
+            <s-button variant="tertiary" tone="critical" onClick={() => removeProduct(cartLine)}>
+              Remove
+            </s-button>
+          )}
+        </s-stack>
       </s-grid>
     </s-box>
   );
+}
+
+function findCartLine(product, cartLines) {
+  if (!product.variantId) return null;
+
+  return cartLines.find((line) => line.merchandise?.id === product.variantId);
 }
 
 async function addProduct(variantId) {
   await shopify.applyCartLinesChange({
     type: "addCartLine",
     merchandiseId: variantId,
+    quantity: 1,
+  });
+}
+
+async function removeProduct(cartLine) {
+  await shopify.applyCartLinesChange({
+    type: "removeCartLine",
+    id: cartLine.id,
     quantity: 1,
   });
 }
