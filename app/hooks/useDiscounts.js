@@ -1,0 +1,61 @@
+import { useCallback, useEffect, useState } from "react";
+
+const defaultDiscounts = [
+  {
+    id: 1,
+    title: "Welcome offer",
+    code: "WELCOME10",
+    category: "Amount off order",
+    method: "Discount code",
+    type: "Percentage",
+    value: 10,
+    minimumRequirement: "amount",
+    minimumPurchase: 1000,
+    status: "Active",
+    eligibility: "all",
+    combinesWith: {
+      orderDiscounts: false,
+      productDiscounts: false,
+      shippingDiscounts: false,
+    },
+  },
+];
+
+export default function useDiscounts({ onChange } = {}) {
+  const [discounts, setDiscountsState] = useState(defaultDiscounts);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("discounts");
+      const storedDiscounts = stored ? JSON.parse(stored) : defaultDiscounts;
+      setDiscountsState(storedDiscounts);
+      onChange?.(storedDiscounts);
+    } catch {
+      setDiscountsState(defaultDiscounts);
+      onChange?.(defaultDiscounts);
+    }
+  }, [onChange]);
+
+  const setDiscounts = useCallback((nextDiscounts) => {
+    setDiscountsState((currentDiscounts) => {
+      const resolvedDiscounts =
+        typeof nextDiscounts === "function"
+          ? nextDiscounts(currentDiscounts)
+          : nextDiscounts;
+
+      try {
+        localStorage.setItem("discounts", JSON.stringify(resolvedDiscounts));
+      } catch (error) {
+        console.error("Failed to save discounts:", error);
+      }
+
+      onChange?.(resolvedDiscounts);
+      return resolvedDiscounts;
+    });
+  }, [onChange]);
+
+  return {
+    discounts,
+    setDiscounts,
+  };
+}

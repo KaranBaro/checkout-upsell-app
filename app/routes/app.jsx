@@ -3,6 +3,7 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { authenticate } from "../shopify.server";
+import useDiscounts from "../hooks/useDiscounts";
 import useUpsells from "../hooks/useUpsells";
 import {
   getMessages,
@@ -25,6 +26,17 @@ export const loader = async ({ request }) => {
 
 export default function App() {
   const { apiKey, shop, messages: initialMessages } = useLoaderData();
+  const syncDiscounts = useCallback(async (nextDiscounts) => {
+    try {
+      await fetch("/api/checkout-discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop, discounts: nextDiscounts }),
+      });
+    } catch (error) {
+      console.error("Failed to sync checkout discounts:", error);
+    }
+  }, [shop]);
   const syncUpsells = useCallback(async (nextUpsells) => {
     try {
       await fetch("/api/checkout-upsells", {
@@ -36,19 +48,9 @@ export default function App() {
       console.error("Failed to sync checkout upsells:", error);
     }
   }, [shop]);
+  const discountState = useDiscounts({ onChange: syncDiscounts });
   const upsellState = useUpsells({ onChange: syncUpsells });
   const [messages, setMessages] = useState(initialMessages);
-  const [discounts, setDiscounts] = useState([
-    {
-      id: 1,
-      title: "Welcome offer",
-      code: "WELCOME10",
-      type: "Percentage",
-      value: 10,
-      minimumPurchase: 1000,
-      status: "Active",
-    },
-  ]);
 
   return (
     <AppProvider embedded apiKey={apiKey}>
@@ -66,8 +68,7 @@ export default function App() {
           messages,
           setMessages,
           shop,
-          discounts,
-          setDiscounts,
+          ...discountState,
           ...upsellState,
         }}
       />
