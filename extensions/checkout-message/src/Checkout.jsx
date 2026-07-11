@@ -33,6 +33,7 @@ function CheckoutMessage() {
 function getCheckoutMessages() {
   const checkoutMessages = shopify.appMetafields.value.find(
     (appMetafield) =>
+      appMetafield.target.type === "shop" &&
       appMetafield.metafield.namespace === CHECKOUT_MESSAGES_METAFIELD.namespace &&
       appMetafield.metafield.key === CHECKOUT_MESSAGES_METAFIELD.key,
   );

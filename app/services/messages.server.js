@@ -75,20 +75,20 @@ export async function syncCheckoutMessagesMetafield(admin, shop, messages) {
       message: message.message,
     }));
 
-  const installationResponse = await admin.graphql(
+  const shopResponse = await admin.graphql(
     `#graphql
-      query CurrentAppInstallation {
-        currentAppInstallation {
+      query CurrentShop {
+        shop {
           id
         }
       }
     `,
   );
-  const installationBody = await installationResponse.json();
-  const ownerId = installationBody.data?.currentAppInstallation?.id;
+  const shopBody = await shopResponse.json();
+  const ownerId = shopBody.data?.shop?.id;
 
   if (!ownerId) {
-    throw new Error("Unable to find current app installation");
+    throw new Error("Unable to find current shop");
   }
 
   const metafieldResponse = await admin.graphql(
