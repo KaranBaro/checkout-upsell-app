@@ -1,35 +1,48 @@
 import { useState, useCallback, useEffect } from "react";
 
+const LEGACY_STORAGE_KEY = "upsells";
+
+function readLegacyUpsells() {
+  try {
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function clearLegacyUpsells() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures. Store metafields are the source of truth.
+  }
+}
+
 export default function useUpsells({ initialUpsells = [], onChange } = {}) {
   const [upsells, setUpsells] = useState(initialUpsells);
 
   useEffect(() => {
-    try {
-      if (initialUpsells.length > 0) {
-        localStorage.setItem("upsells", JSON.stringify(initialUpsells));
-        setUpsells(initialUpsells);
-        onChange?.(initialUpsells);
-        return;
-      }
-
-      const stored = localStorage.getItem("upsells");
-      const storedUpsells = stored ? JSON.parse(stored) : [];
-      setUpsells(storedUpsells);
-      if (storedUpsells.length > 0) {
-        onChange?.(storedUpsells);
-      }
-    } catch {
+    if (initialUpsells.length > 0) {
       setUpsells(initialUpsells);
+      clearLegacyUpsells();
+      return;
+    }
+
+    const legacyUpsells = readLegacyUpsells();
+    setUpsells(legacyUpsells);
+
+    if (legacyUpsells.length > 0) {
+      Promise.resolve(onChange?.(legacyUpsells))
+        .then(clearLegacyUpsells)
+        .catch((error) => {
+          console.error("Failed to migrate legacy upsells:", error);
+        });
     }
   }, [initialUpsells, onChange]);
 
-  const saveToStorage = useCallback((data) => {
-    try {
-      localStorage.setItem("upsells", JSON.stringify(data));
-    } catch (error) {
-      console.error("Failed to save upsells:", error);
-    }
-
+  const persistUpsells = useCallback((data) => {
     onChange?.(data);
   }, [onChange]);
 
@@ -42,9 +55,9 @@ export default function useUpsells({ initialUpsells = [], onChange } = {}) {
     };
     const updated = [...upsells, newUpsell];
     setUpsells(updated);
-    saveToStorage(updated);
+    persistUpsells(updated);
     return newUpsell;
-  }, [upsells, saveToStorage]);
+  }, [upsells, persistUpsells]);
 
   const updateUpsell = useCallback((id, updates) => {
     const updated = upsells.map((u) =>
@@ -53,14 +66,14 @@ export default function useUpsells({ initialUpsells = [], onChange } = {}) {
         : u
     );
     setUpsells(updated);
-    saveToStorage(updated);
-  }, [upsells, saveToStorage]);
+    persistUpsells(updated);
+  }, [upsells, persistUpsells]);
 
   const deleteUpsell = useCallback((id) => {
     const updated = upsells.filter((u) => u.id !== id);
     setUpsells(updated);
-    saveToStorage(updated);
-  }, [upsells, saveToStorage]);
+    persistUpsells(updated);
+  }, [upsells, persistUpsells]);
 
   const toggleUpsellStatus = useCallback((id, newStatus) => {
     updateUpsell(id, { status: newStatus });

@@ -1,27 +1,45 @@
 import { useCallback, useEffect, useState } from "react";
 
 const defaultDiscounts = [];
+const LEGACY_STORAGE_KEY = "discounts";
+
+function readLegacyDiscounts() {
+  try {
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : defaultDiscounts;
+    return Array.isArray(parsed) ? parsed : defaultDiscounts;
+  } catch {
+    return defaultDiscounts;
+  }
+}
+
+function clearLegacyDiscounts() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures. Store metafields are the source of truth.
+  }
+}
 
 export default function useDiscounts({ initialDiscounts = defaultDiscounts, onChange } = {}) {
   const [discounts, setDiscountsState] = useState(initialDiscounts);
 
   useEffect(() => {
-    try {
-      if (initialDiscounts.length > 0) {
-        localStorage.setItem("discounts", JSON.stringify(initialDiscounts));
-        setDiscountsState(initialDiscounts);
-        onChange?.(initialDiscounts);
-        return;
-      }
-
-      const stored = localStorage.getItem("discounts");
-      const storedDiscounts = stored ? JSON.parse(stored) : defaultDiscounts;
-      setDiscountsState(storedDiscounts);
-      if (storedDiscounts.length > 0) {
-        onChange?.(storedDiscounts);
-      }
-    } catch {
+    if (initialDiscounts.length > 0) {
       setDiscountsState(initialDiscounts);
+      clearLegacyDiscounts();
+      return;
+    }
+
+    const legacyDiscounts = readLegacyDiscounts();
+    setDiscountsState(legacyDiscounts);
+
+    if (legacyDiscounts.length > 0) {
+      Promise.resolve(onChange?.(legacyDiscounts))
+        .then(clearLegacyDiscounts)
+        .catch((error) => {
+          console.error("Failed to migrate legacy discounts:", error);
+        });
     }
   }, [initialDiscounts, onChange]);
 
@@ -31,12 +49,6 @@ export default function useDiscounts({ initialDiscounts = defaultDiscounts, onCh
         typeof nextDiscounts === "function"
           ? nextDiscounts(currentDiscounts)
           : nextDiscounts;
-
-      try {
-        localStorage.setItem("discounts", JSON.stringify(resolvedDiscounts));
-      } catch (error) {
-        console.error("Failed to save discounts:", error);
-      }
 
       onChange?.(resolvedDiscounts);
       return resolvedDiscounts;
