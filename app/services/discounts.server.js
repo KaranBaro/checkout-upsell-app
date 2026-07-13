@@ -1,6 +1,17 @@
+import {
+  APP_METAFIELD_NAMESPACE,
+  readShopJsonMetafield,
+  setShopJsonMetafields,
+} from "./shop-metafields.server";
+
 export const CHECKOUT_DISCOUNTS_METAFIELD = {
-  namespace: "$app",
+  namespace: APP_METAFIELD_NAMESPACE,
   key: "checkoutDiscounts",
+};
+
+export const DASHBOARD_DISCOUNTS_METAFIELD = {
+  namespace: APP_METAFIELD_NAMESPACE,
+  key: "dashboardDiscounts",
 };
 
 function normalizeCombinesWith(combinesWith = {}) {
@@ -54,61 +65,33 @@ export function getActiveCheckoutDiscounts(discounts = []) {
     .filter((discount) => discount.method !== "Discount code" || discount.code);
 }
 
+export async function loadDashboardDiscounts(admin) {
+  const dashboardDiscounts = await readShopJsonMetafield(
+    admin,
+    DASHBOARD_DISCOUNTS_METAFIELD,
+    null,
+  );
+
+  if (dashboardDiscounts) {
+    return dashboardDiscounts;
+  }
+
+  return readShopJsonMetafield(admin, CHECKOUT_DISCOUNTS_METAFIELD, []);
+}
+
 export async function syncCheckoutDiscountsMetafield(admin, discounts = []) {
   const activeDiscounts = getActiveCheckoutDiscounts(discounts);
 
-  const shopResponse = await admin.graphql(
-    `#graphql
-      query CurrentShop {
-        shop {
-          id
-        }
-      }
-    `,
-  );
-  const shopBody = await shopResponse.json();
-  const ownerId = shopBody.data?.shop?.id;
-
-  if (!ownerId) {
-    throw new Error("Unable to find current shop");
-  }
-
-  const metafieldResponse = await admin.graphql(
-    `#graphql
-      mutation SyncCheckoutDiscounts($metafields: [MetafieldsSetInput!]!) {
-        metafieldsSet(metafields: $metafields) {
-          metafields {
-            id
-            namespace
-            key
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `,
+  await setShopJsonMetafields(admin, [
     {
-      variables: {
-        metafields: [
-          {
-            ownerId,
-            namespace: CHECKOUT_DISCOUNTS_METAFIELD.namespace,
-            key: CHECKOUT_DISCOUNTS_METAFIELD.key,
-            type: "json",
-            value: JSON.stringify(activeDiscounts),
-          },
-        ],
-      },
+      ...DASHBOARD_DISCOUNTS_METAFIELD,
+      value: discounts,
     },
-  );
-  const metafieldBody = await metafieldResponse.json();
-  const errors = metafieldBody.data?.metafieldsSet?.userErrors ?? [];
-
-  if (errors.length > 0) {
-    throw new Error(errors.map((error) => error.message).join(", "));
-  }
+    {
+      ...CHECKOUT_DISCOUNTS_METAFIELD,
+      value: activeDiscounts,
+    },
+  ]);
 
   return activeDiscounts;
 }

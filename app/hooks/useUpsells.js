@@ -1,18 +1,27 @@
 import { useState, useCallback, useEffect } from "react";
 
-export default function useUpsells({ onChange } = {}) {
-  const [upsells, setUpsells] = useState([]);
+export default function useUpsells({ initialUpsells = [], onChange } = {}) {
+  const [upsells, setUpsells] = useState(initialUpsells);
 
   useEffect(() => {
     try {
+      if (initialUpsells.length > 0) {
+        localStorage.setItem("upsells", JSON.stringify(initialUpsells));
+        setUpsells(initialUpsells);
+        onChange?.(initialUpsells);
+        return;
+      }
+
       const stored = localStorage.getItem("upsells");
       const storedUpsells = stored ? JSON.parse(stored) : [];
       setUpsells(storedUpsells);
-      onChange?.(storedUpsells);
+      if (storedUpsells.length > 0) {
+        onChange?.(storedUpsells);
+      }
     } catch {
-      setUpsells([]);
+      setUpsells(initialUpsells);
     }
-  }, [onChange]);
+  }, [initialUpsells, onChange]);
 
   const saveToStorage = useCallback((data) => {
     try {

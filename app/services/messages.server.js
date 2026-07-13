@@ -1,3 +1,9 @@
+import {
+  APP_METAFIELD_NAMESPACE,
+  readShopJsonMetafield,
+  setShopJsonMetafields,
+} from "./shop-metafields.server";
+
 const defaultMessages = [
   {
     id: 1,
@@ -18,8 +24,13 @@ const defaultMessages = [
 ];
 
 export const CHECKOUT_MESSAGES_METAFIELD = {
-  namespace: "$app",
+  namespace: APP_METAFIELD_NAMESPACE,
   key: "checkoutMessages",
+};
+
+export const DASHBOARD_MESSAGES_METAFIELD = {
+  namespace: APP_METAFIELD_NAMESPACE,
+  key: "dashboardMessages",
 };
 
 const messageStore = global.checkoutMessageStore ?? new Map();
@@ -65,8 +76,22 @@ export function getActiveCheckoutMessages(shop) {
   );
 }
 
-export async function syncCheckoutMessagesMetafield(admin, shop, messages) {
-  const activeMessages = (messages ?? getActiveCheckoutMessages(shop))
+function normalizeDashboardMessages(messages = []) {
+  return Array.isArray(messages)
+    ? messages.map((message) => ({
+        id: message.id,
+        category: message.category,
+        method: message.method,
+        title: message.title || "",
+        type: message.type || "Info",
+        message: message.message || "",
+        status: message.status || "Draft",
+      }))
+    : [];
+}
+
+export function getCheckoutMessagePayload(shop, messages) {
+  return (messages ?? getActiveCheckoutMessages(shop))
     .filter((message) => message.status === "Active" && message.message)
     .map((message) => ({
       id: message.id,
@@ -74,59 +99,60 @@ export async function syncCheckoutMessagesMetafield(admin, shop, messages) {
       type: message.type,
       message: message.message,
     }));
+}
 
-  const shopResponse = await admin.graphql(
-    `#graphql
-      query CurrentShop {
-        shop {
-          id
-        }
-      }
-    `,
+export async function loadDashboardMessages(admin, shop) {
+  const dashboardMessages = await readShopJsonMetafield(
+    admin,
+    DASHBOARD_MESSAGES_METAFIELD,
+    null,
   );
-  const shopBody = await shopResponse.json();
-  const ownerId = shopBody.data?.shop?.id;
 
-  if (!ownerId) {
-    throw new Error("Unable to find current shop");
+  if (dashboardMessages) {
+    saveMessages(shop, dashboardMessages);
+    return normalizeDashboardMessages(dashboardMessages);
   }
 
-  const metafieldResponse = await admin.graphql(
-    `#graphql
-      mutation SyncCheckoutMessages($metafields: [MetafieldsSetInput!]!) {
-        metafieldsSet(metafields: $metafields) {
-          metafields {
-            id
-            namespace
-            key
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `,
+  const checkoutMessages = await readShopJsonMetafield(
+    admin,
+    CHECKOUT_MESSAGES_METAFIELD,
+    null,
+  );
+
+  if (checkoutMessages) {
+    saveMessages(shop, checkoutMessages);
+    return normalizeDashboardMessages(checkoutMessages);
+  }
+
+  return getMessages(shop);
+}
+
+export async function syncCheckoutMessagesMetafield(admin, shop, messages) {
+  const activeMessages = getCheckoutMessagePayload(shop, messages);
+  await setShopJsonMetafields(admin, [
     {
-      variables: {
-        metafields: [
-          {
-            ownerId,
-            namespace: CHECKOUT_MESSAGES_METAFIELD.namespace,
-            key: CHECKOUT_MESSAGES_METAFIELD.key,
-            type: "json",
-            value: JSON.stringify(activeMessages),
-          },
-        ],
-      },
+      ...CHECKOUT_MESSAGES_METAFIELD,
+      value: activeMessages,
     },
-  );
-  const metafieldBody = await metafieldResponse.json();
-  const errors = metafieldBody.data?.metafieldsSet?.userErrors ?? [];
-
-  if (errors.length > 0) {
-    throw new Error(errors.map((error) => error.message).join(", "));
-  }
+  ]);
 
   return activeMessages;
+}
+
+export async function syncMessagesMetafields(admin, shop, messages) {
+  const dashboardMessages = normalizeDashboardMessages(messages);
+  const activeMessages = getCheckoutMessagePayload(shop, dashboardMessages);
+
+  await setShopJsonMetafields(admin, [
+    {
+      ...DASHBOARD_MESSAGES_METAFIELD,
+      value: dashboardMessages,
+    },
+    {
+      ...CHECKOUT_MESSAGES_METAFIELD,
+      value: activeMessages,
+    },
+  ]);
+
+  return dashboardMessages;
 }

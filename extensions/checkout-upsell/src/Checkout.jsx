@@ -93,20 +93,20 @@ function ProductCard({ product, cartLine }) {
         )}
 
         <s-stack gap="small">
-          <s-text type="strong">{product.title}</s-text>
-          {product.price && <s-text type="strong">{product.price}</s-text>}
+          <s-text>{product.title}</s-text>
+          {product.price && <s-text>{product.price}</s-text>}
         </s-stack>
 
         <s-stack gap="small">
           {canAdd && (
-            <s-button variant="secondary" onClick={() => addProduct(product.variantId)}>
+            <s-button variant="primary" onClick={() => addProduct(product.variantId)}>
               Add
             </s-button>
           )}
 
           {canRemove && (
-            <s-button variant="tertiary" tone="critical" onClick={() => removeProduct(cartLine)}>
-              Remove
+            <s-button variant="tertiary" onClick={() => removeProduct(cartLine)}>
+              X
             </s-button>
           )}
         </s-stack>

@@ -1,6 +1,17 @@
+import {
+  APP_METAFIELD_NAMESPACE,
+  readShopJsonMetafield,
+  setShopJsonMetafields,
+} from "./shop-metafields.server";
+
 export const CHECKOUT_UPSELLS_METAFIELD = {
-  namespace: "$app",
+  namespace: APP_METAFIELD_NAMESPACE,
   key: "checkoutUpsells",
+};
+
+export const DASHBOARD_UPSELLS_METAFIELD = {
+  namespace: APP_METAFIELD_NAMESPACE,
+  key: "dashboardUpsells",
 };
 
 function normalizeProduct(product) {
@@ -35,61 +46,44 @@ export function getActiveCheckoutUpsells(upsells = []) {
     .filter((upsell) => upsell.recommendedProducts.length > 0);
 }
 
+export async function loadDashboardUpsells(admin) {
+  const dashboardUpsells = await readShopJsonMetafield(
+    admin,
+    DASHBOARD_UPSELLS_METAFIELD,
+    null,
+  );
+
+  if (dashboardUpsells) {
+    return dashboardUpsells;
+  }
+
+  return readShopJsonMetafield(admin, CHECKOUT_UPSELLS_METAFIELD, []);
+}
+
 export async function syncCheckoutUpsellsMetafield(admin, upsells = []) {
   const activeUpsells = getActiveCheckoutUpsells(upsells);
 
-  const shopResponse = await admin.graphql(
-    `#graphql
-      query CurrentShop {
-        shop {
-          id
-        }
-      }
-    `,
-  );
-  const shopBody = await shopResponse.json();
-  const ownerId = shopBody.data?.shop?.id;
-
-  if (!ownerId) {
-    throw new Error("Unable to find current shop");
-  }
-
-  const metafieldResponse = await admin.graphql(
-    `#graphql
-      mutation SyncCheckoutUpsells($metafields: [MetafieldsSetInput!]!) {
-        metafieldsSet(metafields: $metafields) {
-          metafields {
-            id
-            namespace
-            key
-          }
-          userErrors {
-            field
-            message
-          }
-        }
-      }
-    `,
+  await setShopJsonMetafields(admin, [
     {
-      variables: {
-        metafields: [
-          {
-            ownerId,
-            namespace: CHECKOUT_UPSELLS_METAFIELD.namespace,
-            key: CHECKOUT_UPSELLS_METAFIELD.key,
-            type: "json",
-            value: JSON.stringify(activeUpsells),
-          },
-        ],
-      },
+      ...DASHBOARD_UPSELLS_METAFIELD,
+      value: upsells,
     },
-  );
-  const metafieldBody = await metafieldResponse.json();
-  const errors = metafieldBody.data?.metafieldsSet?.userErrors ?? [];
-
-  if (errors.length > 0) {
-    throw new Error(errors.map((error) => error.message).join(", "));
-  }
+    {
+      ...CHECKOUT_UPSELLS_METAFIELD,
+      value: activeUpsells,
+    },
+  ]);
 
   return activeUpsells;
+}
+
+export async function syncDashboardUpsellsMetafield(admin, upsells = []) {
+  await setShopJsonMetafields(admin, [
+    {
+      ...DASHBOARD_UPSELLS_METAFIELD,
+      value: upsells,
+    },
+  ]);
+
+  return upsells;
 }

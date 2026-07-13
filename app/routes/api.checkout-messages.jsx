@@ -2,7 +2,7 @@ import { authenticate } from "../shopify.server";
 import {
   getActiveCheckoutMessages,
   saveMessages,
-  syncCheckoutMessagesMetafield,
+  syncMessagesMetafields,
 } from "../services/messages.server";
 
 const corsHeaders = {
@@ -42,7 +42,7 @@ export async function action({ request }) {
   const body = await request.json();
   const shop = body.shop || session.shop;
   const messages = saveMessages(shop, body.messages);
-  await syncCheckoutMessagesMetafield(admin, shop, messages);
+  await syncMessagesMetafields(admin, shop, messages);
 
   return json({
     ok: true,

@@ -6,26 +6,40 @@ import { authenticate } from "../shopify.server";
 import useDiscounts from "../hooks/useDiscounts";
 import useUpsells from "../hooks/useUpsells";
 import {
-  getMessages,
-  syncCheckoutMessagesMetafield,
+  loadDashboardMessages,
+  syncMessagesMetafields,
 } from "../services/messages.server";
+import { loadDashboardDiscounts } from "../services/discounts.server";
+import { loadDashboardUpsells } from "../services/upsells.server";
 
 /* global process */
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
-  const messages = getMessages(session.shop);
-  await syncCheckoutMessagesMetafield(admin, session.shop, messages);
+  const [messages, discounts, upsells] = await Promise.all([
+    loadDashboardMessages(admin, session.shop),
+    loadDashboardDiscounts(admin),
+    loadDashboardUpsells(admin),
+  ]);
+  await syncMessagesMetafields(admin, session.shop, messages);
 
   return {
     apiKey: process.env.SHOPIFY_API_KEY || "",
     shop: session.shop,
     messages,
+    discounts,
+    upsells,
   };
 };
 
 export default function App() {
-  const { apiKey, shop, messages: initialMessages } = useLoaderData();
+  const {
+    apiKey,
+    shop,
+    messages: initialMessages,
+    discounts: initialDiscounts,
+    upsells: initialUpsells,
+  } = useLoaderData();
   const syncDiscounts = useCallback(async (nextDiscounts) => {
     try {
       await fetch("/api/checkout-discounts", {
@@ -48,8 +62,8 @@ export default function App() {
       console.error("Failed to sync checkout upsells:", error);
     }
   }, [shop]);
-  const discountState = useDiscounts({ onChange: syncDiscounts });
-  const upsellState = useUpsells({ onChange: syncUpsells });
+  const discountState = useDiscounts({ initialDiscounts, onChange: syncDiscounts });
+  const upsellState = useUpsells({ initialUpsells, onChange: syncUpsells });
   const [messages, setMessages] = useState(initialMessages);
 
   return (

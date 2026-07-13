@@ -2,20 +2,28 @@ import { useCallback, useEffect, useState } from "react";
 
 const defaultDiscounts = [];
 
-export default function useDiscounts({ onChange } = {}) {
-  const [discounts, setDiscountsState] = useState(defaultDiscounts);
+export default function useDiscounts({ initialDiscounts = defaultDiscounts, onChange } = {}) {
+  const [discounts, setDiscountsState] = useState(initialDiscounts);
 
   useEffect(() => {
     try {
+      if (initialDiscounts.length > 0) {
+        localStorage.setItem("discounts", JSON.stringify(initialDiscounts));
+        setDiscountsState(initialDiscounts);
+        onChange?.(initialDiscounts);
+        return;
+      }
+
       const stored = localStorage.getItem("discounts");
       const storedDiscounts = stored ? JSON.parse(stored) : defaultDiscounts;
       setDiscountsState(storedDiscounts);
-      onChange?.(storedDiscounts);
+      if (storedDiscounts.length > 0) {
+        onChange?.(storedDiscounts);
+      }
     } catch {
-      setDiscountsState(defaultDiscounts);
-      onChange?.(defaultDiscounts);
+      setDiscountsState(initialDiscounts);
     }
-  }, [onChange]);
+  }, [initialDiscounts, onChange]);
 
   const setDiscounts = useCallback((nextDiscounts) => {
     setDiscountsState((currentDiscounts) => {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import PropTypes from "prop-types";
 import { useLoaderData, useOutletContext } from "react-router";
 import { authenticate } from "../shopify.server";
 
@@ -73,19 +74,8 @@ export const loader = async ({ request }) => {
 };
 
 export default function Analytics() {
-  const { messages, discounts } = useOutletContext();
+  const { messages, discounts, upsells } = useOutletContext();
   const { ordersCount, uniqueCustomerCount, recentCustomers, topShippingLocations } = useLoaderData();
-  const [upsells, setUpsells] = useState([]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem("upsells");
-      setUpsells(stored ? JSON.parse(stored) : []);
-    } catch {
-      setUpsells([]);
-    }
-  }, []);
 
   const metrics = useMemo(() => {
     const activeMessages = messages.filter((message) => message.status === "Active").length;
@@ -102,8 +92,10 @@ export default function Analytics() {
       activeUpsells,
       directAddUpsells,
       totalRules,
+      ordersCount,
+      uniqueCustomerCount,
     };
-  }, [messages, discounts, upsells]);
+  }, [messages, discounts, upsells, ordersCount, uniqueCustomerCount]);
 
   return (
     <div style={{ padding: "24px" }}>
@@ -174,7 +166,7 @@ export default function Analytics() {
           <div style={{ padding: "20px", borderRadius: "12px", background: "#fff", border: "1px solid #e1e3e5" }}>
             <h2 style={{ marginTop: 0, fontSize: "20px" }}>Current data</h2>
             <p style={{ margin: "0 0 16px", color: "#6d7175" }}>
-              This page reads the existing app state and upsells stored in browser storage.
+              This page reads the shared app state stored for this shop.
             </p>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
               <ListItem label="Messages" value={messages.length} />
@@ -250,6 +242,12 @@ function MetricCard({ label, value, detail }) {
   );
 }
 
+MetricCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+  detail: PropTypes.string.isRequired,
+};
+
 function StatRow({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: "20px", padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
@@ -259,6 +257,11 @@ function StatRow({ label, value }) {
   );
 }
 
+StatRow.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+};
+
 function ListItem({ label, value }) {
   return (
     <li style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
@@ -267,3 +270,8 @@ function ListItem({ label, value }) {
     </li>
   );
 }
+
+ListItem.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+};
