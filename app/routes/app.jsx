@@ -52,15 +52,21 @@ export default function App() {
     }
   }, [shop]);
   const syncUpsells = useCallback(async (nextUpsells) => {
-    try {
-      await fetch("/api/checkout-upsells", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shop, upsells: nextUpsells }),
-      });
-    } catch (error) {
-      console.error("Failed to sync checkout upsells:", error);
+  const response = await fetch("/api/checkout-upsells", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ upsells: nextUpsells }),
+  });
+
+  const result = await response.json().catch(() => null);
+
+    if (!response.ok || !result?.ok) {
+      throw new Error(
+        result?.error || `Failed to save checkout upsells (${response.status})`,
+      );
     }
+
+    return result;
   }, [shop]);
   const discountState = useDiscounts({ initialDiscounts, onChange: syncDiscounts });
   const upsellState = useUpsells({ initialUpsells, onChange: syncUpsells });

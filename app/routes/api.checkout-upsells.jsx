@@ -30,18 +30,58 @@ export async function loader() {
 
 export async function action({ request }) {
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
-  const { admin } = await authenticate.admin(request);
-  const body = await request.json();
-  const upsells = Array.isArray(body.upsells) ? body.upsells : [];
-  const checkoutUpsells = await syncCheckoutUpsellsMetafield(admin, upsells);
+  if (request.method !== "POST") {
+    return json(
+      {
+        ok: false,
+        error: "Method not allowed",
+      },
+      { status: 405 },
+    );
+  }
 
-  return json({
-    ok: true,
-    enabled: checkoutUpsells.length > 0,
-    upsells: checkoutUpsells,
-    preview: getActiveCheckoutUpsells(upsells),
-  });
+  try {
+    const { admin } = await authenticate.admin(request);
+
+    const body = await request.json();
+
+    const upsells = Array.isArray(body.upsells)
+      ? body.upsells
+      : [];
+
+    const checkoutUpsells = await syncCheckoutUpsellsMetafield(
+      admin,
+      upsells,
+    );
+
+    return json({
+      ok: true,
+      enabled: checkoutUpsells.length > 0,
+      upsells: checkoutUpsells,
+      preview: getActiveCheckoutUpsells(upsells),
+    });
+  } catch (error) {
+    console.error(
+      "Failed to save checkout upsells:",
+      error,
+    );
+
+    return json(
+      {
+        ok: false,
+        error:
+          error?.message ||
+          "Failed to save checkout upsells",
+      },
+      {
+        status: 500,
+      },
+    );
+  }
 }
