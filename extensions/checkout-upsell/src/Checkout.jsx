@@ -74,6 +74,7 @@ function ProductsLayout({ upsell, cartLines }) {
 function ProductCard({ product, cartLine }) {
   const canAdd = Boolean(product.variantId);
   const canRemove = Boolean(cartLine?.id);
+  const productTitle = titleCase(product.title);
 
   return (
     <s-box border="base" borderRadius="base" padding="base">
@@ -93,26 +94,41 @@ function ProductCard({ product, cartLine }) {
         )}
 
         <s-stack gap="small">
-          <s-text>{product.title}</s-text>
+          <s-text>{productTitle}</s-text>
           {product.price && <s-text>{product.price}</s-text>}
         </s-stack>
 
-        <s-stack gap="small">
+        <s-grid gridTemplateColumns="auto auto" gap="small" alignItems="center">
           {canAdd && (
-            <s-button variant="primary" onClick={() => addProduct(product.variantId)}>
+            <s-button
+              variant="primary"
+              inlineSize="fit-content"
+              onClick={() => addProduct(product.variantId)}
+            >
               Add
             </s-button>
           )}
 
           {canRemove && (
-            <s-button variant="tertiary" onClick={() => removeProduct(cartLine)}>
-              X
+            <s-button
+              variant="tertiary"
+              inlineSize="fit-content"
+              accessibilityLabel={`Remove ${productTitle}`}
+              onClick={() => removeProduct(cartLine)}
+            >
+              ×
             </s-button>
           )}
-        </s-stack>
+        </s-grid>
       </s-grid>
     </s-box>
   );
+}
+
+function titleCase(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function findCartLine(product, cartLines) {

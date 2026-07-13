@@ -76,7 +76,12 @@ export async function loadDashboardDiscounts(admin) {
     return dashboardDiscounts;
   }
 
-  return readShopJsonMetafield(admin, CHECKOUT_DISCOUNTS_METAFIELD, []);
+  const checkoutDiscounts = await readShopJsonMetafield(admin, CHECKOUT_DISCOUNTS_METAFIELD, []);
+
+  return checkoutDiscounts.map((discount) => ({
+    ...discount,
+    status: discount.status || "Active",
+  }));
 }
 
 export async function syncCheckoutDiscountsMetafield(admin, discounts = []) {

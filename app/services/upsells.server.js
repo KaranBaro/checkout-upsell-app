@@ -57,7 +57,12 @@ export async function loadDashboardUpsells(admin) {
     return dashboardUpsells;
   }
 
-  return readShopJsonMetafield(admin, CHECKOUT_UPSELLS_METAFIELD, []);
+  const checkoutUpsells = await readShopJsonMetafield(admin, CHECKOUT_UPSELLS_METAFIELD, []);
+
+  return checkoutUpsells.map((upsell) => ({
+    ...upsell,
+    status: upsell.status || "Active",
+  }));
 }
 
 export async function syncCheckoutUpsellsMetafield(admin, upsells = []) {

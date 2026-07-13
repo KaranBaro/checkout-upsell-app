@@ -120,8 +120,12 @@ export async function loadDashboardMessages(admin, shop) {
   );
 
   if (checkoutMessages) {
-    saveMessages(shop, checkoutMessages);
-    return normalizeDashboardMessages(checkoutMessages);
+    const migratedMessages = checkoutMessages.map((message) => ({
+      ...message,
+      status: message.status || "Active",
+    }));
+    saveMessages(shop, migratedMessages);
+    return normalizeDashboardMessages(migratedMessages);
   }
 
   return getMessages(shop);
