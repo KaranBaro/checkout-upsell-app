@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
+import { useEffect, useState } from "preact/hooks";
 
 const CHECKOUT_UPSELLS_METAFIELD = {
   namespace: "$app",
@@ -11,25 +12,97 @@ export default async () => {
   render(<CheckoutUpsell />, document.body);
 };
 
+// function CheckoutUpsell() {
+//   const cartLines = shopify.lines.value;
+//   const subtotal = Number(shopify.cost.subtotalAmount.value.amount || 0);
+//   const cartQuantity = cartLines.reduce((total, line) => total + line.quantity, 0);
+//   const upsells = getCheckoutUpsells().filter((upsell) =>
+//     shouldShowUpsell(upsell, cartLines, subtotal, cartQuantity),
+//   );
+
+//   if (upsells.length === 0) return null;
+
+//   return (
+//     <s-stack gap="base">
+//       {upsells.map((upsell) => (
+//         <s-stack key={upsell.id} gap="base">
+//           <s-stack gap="small">
+//             <s-text type="strong">{upsell.title || "Recommended for you"}</s-text>
+//           </s-stack>
+
+//           <ProductsLayout upsell={upsell} cartLines={cartLines} />
+//         </s-stack>
+//       ))}
+//     </s-stack>
+//   );
+// }
+
 function CheckoutUpsell() {
   const cartLines = shopify.lines.value;
-  const subtotal = Number(shopify.cost.subtotalAmount.value.amount || 0);
-  const cartQuantity = cartLines.reduce((total, line) => total + line.quantity, 0);
-  const upsells = getCheckoutUpsells().filter((upsell) =>
-    shouldShowUpsell(upsell, cartLines, subtotal, cartQuantity),
+  const subtotal = Number(
+    shopify.cost.subtotalAmount.value.amount || 0,
   );
 
-  if (upsells.length === 0) return null;
+  const cartQuantity = cartLines.reduce(
+    (total, line) => total + line.quantity,
+    0,
+  );
+
+  const [visibleUpsells, setVisibleUpsells] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVisibleUpsells() {
+      const checkoutUpsells = getCheckoutUpsells();
+
+      const matchedUpsells = [];
+
+      for (const upsell of checkoutUpsells) {
+        const shouldShow = await shouldShowUpsell(
+          upsell,
+          cartLines,
+          subtotal,
+          cartQuantity,
+        );
+
+        if (shouldShow) {
+          matchedUpsells.push(upsell);
+        }
+      }
+
+      if (!cancelled) {
+        setVisibleUpsells(matchedUpsells);
+      }
+    }
+
+    loadVisibleUpsells();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cartLines, subtotal, cartQuantity]);
+
+  if (visibleUpsells.length === 0) return null;
 
   return (
     <s-stack gap="base">
-      {upsells.map((upsell) => (
+      {visibleUpsells.map((upsell) => (
         <s-stack key={upsell.id} gap="base">
           <s-stack gap="small">
-            <s-text type="strong">{upsell.title || "Recommended for you"}</s-text>
+            <s-text type="strong">
+              {upsell.title || "Recommended for you"}
+            </s-text>
+
+            {upsell.description && (
+              <s-text>{upsell.description}</s-text>
+            )}
           </s-stack>
 
-          <ProductsLayout upsell={upsell} cartLines={cartLines} />
+          <ProductsLayout
+            upsell={upsell}
+            cartLines={cartLines}
+          />
         </s-stack>
       ))}
     </s-stack>
