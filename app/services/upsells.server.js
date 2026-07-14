@@ -65,21 +65,59 @@ export async function loadDashboardUpsells(admin) {
   }));
 }
 
+// export async function syncCheckoutUpsellsMetafield(admin, upsells = []) {
+//   const activeUpsells = getActiveCheckoutUpsells(upsells);
+
+//   await setShopJsonMetafields(admin, [
+//     {
+//       ...DASHBOARD_UPSELLS_METAFIELD,
+//       value: upsells,
+//     },
+//     {
+//       ...CHECKOUT_UPSELLS_METAFIELD,
+//       value: activeUpsells,
+//     },
+//   ]);
+
+//   return activeUpsells;
+// }
+
 export async function syncCheckoutUpsellsMetafield(admin, upsells = []) {
+
+  console.log("========== UPSELL SAVE START ==========");
+
+  console.log("Received upsells:", JSON.stringify(upsells, null, 2));
+
   const activeUpsells = getActiveCheckoutUpsells(upsells);
 
+  console.log("Active upsells:", JSON.stringify(activeUpsells, null, 2));
+
   await setShopJsonMetafields(admin, [
+
     {
+
       ...DASHBOARD_UPSELLS_METAFIELD,
+
       value: upsells,
+
     },
+
     {
+
       ...CHECKOUT_UPSELLS_METAFIELD,
+
       value: activeUpsells,
+
     },
+
   ]);
 
+  console.log("Metafields saved successfully");
+
+  console.log("========== UPSELL SAVE END ==========");
+
   return activeUpsells;
+
 }
 
 export async function syncDashboardUpsellsMetafield(admin, upsells = []) {
