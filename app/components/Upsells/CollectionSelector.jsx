@@ -1,13 +1,19 @@
 import PropTypes from "prop-types";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export default function CollectionSelector({
   onCollectionsSelect,
   initialCollections = [],
 }) {
   const [collections, setCollections] = useState([]);
-  const [selectedCollections, setSelectedCollections] =
-    useState(initialCollections);
+  const [selectedCollections, setSelectedCollections] = useState(
+    Array.isArray(initialCollections) ? initialCollections : [],
+  );
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -18,59 +24,52 @@ export default function CollectionSelector({
     );
   }, [initialCollections]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadCollections = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError("");
 
-    async function loadCollections() {
-      setIsLoading(true);
-      setLoadError("");
-
-      try {
-        const response = await fetch("/api/collections", {
+    try {
+      const response = await fetch(
+        `/api/collections?timestamp=${Date.now()}`,
+        {
           method: "GET",
           headers: {
             Accept: "application/json",
           },
-        });
+          cache: "no-store",
+        },
+      );
 
-        const result = await response.json().catch(() => null);
+      const result = await response.json().catch(() => null);
 
-        if (!response.ok || !result?.ok) {
-          throw new Error(
-            result?.error ||
-              `Failed to load collections (${response.status})`,
-          );
-        }
-
-        if (!cancelled) {
-          setCollections(
-            Array.isArray(result.collections)
-              ? result.collections
-              : [],
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load collections:", error);
-
-        if (!cancelled) {
-          setCollections([]);
-          setLoadError(
-            error?.message || "Failed to load Shopify collections",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+      if (!response.ok || !result?.ok) {
+        throw new Error(
+          result?.error ||
+            `Failed to load collections (${response.status})`,
+        );
       }
+
+      setCollections(
+        Array.isArray(result.collections)
+          ? result.collections
+          : [],
+      );
+    } catch (error) {
+      console.error("Failed to load collections:", error);
+
+      setCollections([]);
+      setLoadError(
+        error?.message ||
+          "Failed to load Shopify collections",
+      );
+    } finally {
+      setIsLoading(false);
     }
-
-    loadCollections();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadCollections();
+  }, [loadCollections]);
 
   const filteredCollections = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -80,8 +79,13 @@ export default function CollectionSelector({
     }
 
     return collections.filter((collection) => {
-      const title = String(collection.title || "").toLowerCase();
-      const handle = String(collection.handle || "").toLowerCase();
+      const title = String(
+        collection.title || "",
+      ).toLowerCase();
+
+      const handle = String(
+        collection.handle || "",
+      ).toLowerCase();
 
       return (
         title.includes(normalizedSearch) ||
@@ -107,6 +111,11 @@ export default function CollectionSelector({
     onCollectionsSelect(updatedCollections);
   };
 
+  const clearSelection = () => {
+    setSelectedCollections([]);
+    onCollectionsSelect([]);
+  };
+
   const getTotalProducts = () => {
     return selectedCollections.reduce(
       (total, collection) =>
@@ -130,6 +139,7 @@ export default function CollectionSelector({
           alignItems: "flex-start",
           gap: "16px",
           marginBottom: "16px",
+          flexWrap: "wrap",
         }}
       >
         <div>
@@ -150,38 +160,69 @@ export default function CollectionSelector({
               fontSize: "13px",
             }}
           >
-            Choose the collections whose cart products should trigger
-            this upsell.
+            Choose the collections whose cart products should
+            trigger this upsell.
           </p>
         </div>
 
-        {selectedCollections.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             type="button"
-            onClick={() => {
-              setSelectedCollections([]);
-              onCollectionsSelect([]);
-            }}
+            onClick={loadCollections}
+            disabled={isLoading}
             style={{
               padding: "8px 12px",
               border: "1px solid #c9cccf",
               borderRadius: "8px",
               background: "#fff",
-              cursor: "pointer",
+              cursor: isLoading
+                ? "not-allowed"
+                : "pointer",
               fontSize: "13px",
               fontWeight: 600,
+              opacity: isLoading ? 0.65 : 1,
               whiteSpace: "nowrap",
             }}
           >
-            Clear selection
+            {isLoading
+              ? "Refreshing..."
+              : "Refresh Collections"}
           </button>
-        )}
+
+          {selectedCollections.length > 0 && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #c9cccf",
+                borderRadius: "8px",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Clear Selection
+            </button>
+          )}
+        </div>
       </div>
 
       <input
         type="search"
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onChange={(event) =>
+          setSearch(event.target.value)
+        }
         placeholder="Search collections by title or handle"
         style={{
           width: "100%",
@@ -220,7 +261,25 @@ export default function CollectionSelector({
             fontSize: "13px",
           }}
         >
-          {loadError}
+          <div style={{ marginBottom: "10px" }}>
+            {loadError}
+          </div>
+
+          <button
+            type="button"
+            onClick={loadCollections}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #c9cccf",
+              borderRadius: "8px",
+              background: "#fff",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            Try Again
+          </button>
         </div>
       )}
 
@@ -255,10 +314,12 @@ export default function CollectionSelector({
             }}
           >
             {filteredCollections.map((collection) => {
-              const isSelected = selectedCollections.some(
-                (selectedCollection) =>
-                  selectedCollection.id === collection.id,
-              );
+              const isSelected =
+                selectedCollections.some(
+                  (selectedCollection) =>
+                    selectedCollection.id ===
+                    collection.id,
+                );
 
               return (
                 <button
@@ -302,6 +363,7 @@ export default function CollectionSelector({
                   >
                     <span
                       style={{
+                        minWidth: 0,
                         fontSize: "12px",
                         color: "#6d7175",
                         overflow: "hidden",
@@ -322,7 +384,10 @@ export default function CollectionSelector({
                         borderRadius: "4px",
                       }}
                     >
-                      {Number(collection.productCount || 0)} items
+                      {Number(
+                        collection.productCount || 0,
+                      )}{" "}
+                      items
                     </span>
                   </div>
                 </button>
@@ -346,18 +411,23 @@ export default function CollectionSelector({
               justifyContent: "space-between",
               alignItems: "center",
               gap: "16px",
+              flexWrap: "wrap",
             }}
           >
             <p
               style={{
                 margin: 0,
+                minWidth: 0,
                 fontSize: "13px",
                 color: "#6d7175",
               }}
             >
               Selected:{" "}
               {selectedCollections
-                .map((collection) => collection.title)
+                .map(
+                  (collection) =>
+                    collection.title,
+                )
                 .join(", ")}
             </p>
 
