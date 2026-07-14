@@ -41,11 +41,71 @@ export default function UpsellCard({ upsell, onEdit, onDelete, onToggle }) {
           <p style={{ margin: "4px 0", fontSize: "13px", color: "#6d7175" }}>{upsell.description}</p>
 
           <div style={{ display: "flex", gap: "16px", marginTop: "12px", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "8px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "#6d7175",
+                }}
+              >
+                Block ID:
+              </span>
+
+              <code
+                style={{
+                  padding: "4px 7px",
+                  background: "#f1f2f3",
+                  borderRadius: "5px",
+                  fontSize: "11px",
+                  wordBreak: "break-all",
+                }}
+              >
+                {String(upsell.id)}
+              </code>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(String(upsell.id));
+                  } catch (error) {
+                    console.error("Failed to copy upsell ID:", error);
+                  }
+                }}
+                style={{
+                  padding: "4px 8px",
+                  border: "1px solid #c9cccf",
+                  borderRadius: "6px",
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                }}
+              >
+                Copy
+              </button>
+            </div>
             <div style={{ fontSize: "13px" }}>
               <span style={{ color: "#6d7175" }}>Target:</span> <strong>{getTargetLabel()}</strong>
             </div>
             <div style={{ fontSize: "13px" }}>
-              <span style={{ color: "#6d7175" }}>Layout:</span> <strong>{layoutIcons[upsell.layout] || "⊞"} {upsell.layout.charAt(0).toUpperCase() + upsell.layout.slice(1)}</strong>
+              <span style={{ color: "#6d7175" }}>Layout:</span> <strong>
+                {layoutIcons[upsell.layout] || "⊞"}{" "}
+
+              {String(upsell.layout || "grid")
+
+                .charAt(0)
+
+                .toUpperCase() +
+
+                String(upsell.layout || "grid").slice(1)}</strong>
             </div>
             <div style={{ fontSize: "13px" }}>
               <span style={{ color: "#6d7175" }}>Discount:</span> <strong>{upsell.discountId ? "✓ Linked" : "No discount"}</strong>
@@ -67,7 +127,12 @@ export default function UpsellCard({ upsell, onEdit, onDelete, onToggle }) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
           <button
             type="button"
-            onClick={() => onToggle?.(upsell.id, upsell.status === "Active" ? "Inactive" : "Active")}
+            onClick={() =>
+              onToggle?.(
+                upsell.id,
+                upsell.status === "Active" ? "Draft" : "Active",
+              )
+            }
             style={{
               padding: "8px 12px",
               border: "1px solid #c9cccf",
