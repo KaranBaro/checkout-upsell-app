@@ -48,9 +48,10 @@ key = "checkoutUpsells"
 # name = "Banner title"
 # description = "Enter a title for the banner"
 
-[extensions.settings]
-[[extensions.settings.fields]]
+[settings]
+
+[[settings.fields]]
 key = "upsell_id"
 type = "single_line_text_field"
-name = "Upsell ID"
-description = "Paste the ID of the upsell rule that should appear in this block."
+name = "Upsell rule ID"
+description = "Paste the rule ID from the Grow Checkout upsells dashboard. Leave blank to show all matching upsells."
