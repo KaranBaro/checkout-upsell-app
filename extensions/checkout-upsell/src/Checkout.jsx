@@ -37,8 +37,82 @@ export default async () => {
 //   );
 // }
 
+// function CheckoutUpsell() {
+//   const cartLines = shopify.lines.value;
+//   const subtotal = Number(
+//     shopify.cost.subtotalAmount.value.amount || 0,
+//   );
+
+//   const cartQuantity = cartLines.reduce(
+//     (total, line) => total + line.quantity,
+//     0,
+//   );
+
+//   const [visibleUpsells, setVisibleUpsells] = useState([]);
+
+//   useEffect(() => {
+//     let cancelled = false;
+
+//     async function loadVisibleUpsells() {
+//       const checkoutUpsells = getCheckoutUpsells();
+
+//       const matchedUpsells = [];
+
+//       for (const upsell of checkoutUpsells) {
+//         const shouldShow = await shouldShowUpsell(
+//           upsell,
+//           cartLines,
+//           subtotal,
+//           cartQuantity,
+//         );
+
+//         if (shouldShow) {
+//           matchedUpsells.push(upsell);
+//         }
+//       }
+
+//       if (!cancelled) {
+//         setVisibleUpsells(matchedUpsells);
+//       }
+//     }
+
+//     loadVisibleUpsells();
+
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [cartLines, subtotal, cartQuantity]);
+
+//   if (visibleUpsells.length === 0) return null;
+
+//   return (
+//     <s-stack gap="base">
+//       {visibleUpsells.map((upsell) => (
+//         <s-stack key={upsell.id} gap="base">
+//           <s-stack gap="small">
+//             <s-text type="strong">
+//               {upsell.title || "Recommended for you"}
+//             </s-text>
+
+//             {upsell.description && (
+//               <s-text>{upsell.description}</s-text>
+//             )}
+//           </s-stack>
+
+//           <ProductsLayout
+//             upsell={upsell}
+//             cartLines={cartLines}
+//           />
+//         </s-stack>
+//       ))}
+//     </s-stack>
+//   );
+// }
+
+
 function CheckoutUpsell() {
   const cartLines = shopify.lines.value;
+
   const subtotal = Number(
     shopify.cost.subtotalAmount.value.amount || 0,
   );
@@ -48,6 +122,10 @@ function CheckoutUpsell() {
     0,
   );
 
+  const selectedUpsellId = String(
+    shopify.settings.value?.upsell_id || "",
+  ).trim();
+
   const [visibleUpsells, setVisibleUpsells] = useState([]);
 
   useEffect(() => {
@@ -56,9 +134,19 @@ function CheckoutUpsell() {
     async function loadVisibleUpsells() {
       const checkoutUpsells = getCheckoutUpsells();
 
+      const upsellsForThisBlock = checkoutUpsells.filter(
+        (upsell) => {
+          if (!selectedUpsellId) {
+            return true;
+          }
+
+          return String(upsell.id) === selectedUpsellId;
+        },
+      );
+
       const matchedUpsells = [];
 
-      for (const upsell of checkoutUpsells) {
+      for (const upsell of upsellsForThisBlock) {
         const shouldShow = await shouldShowUpsell(
           upsell,
           cartLines,
@@ -81,9 +169,16 @@ function CheckoutUpsell() {
     return () => {
       cancelled = true;
     };
-  }, [cartLines, subtotal, cartQuantity]);
+  }, [
+    cartLines,
+    subtotal,
+    cartQuantity,
+    selectedUpsellId,
+  ]);
 
-  if (visibleUpsells.length === 0) return null;
+  if (visibleUpsells.length === 0) {
+    return null;
+  }
 
   return (
     <s-stack gap="base">
