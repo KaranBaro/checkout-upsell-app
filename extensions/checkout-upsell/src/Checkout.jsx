@@ -1,7 +1,16 @@
 /* eslint-disable react/prop-types */
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import {
+
+  useEffect,
+
+  useSignal,
+
+  useState,
+
+} from "preact/hooks";
+import { useSubscription } from "@shopify/ui-extensions-preact";
 
 const CHECKOUT_UPSELLS_METAFIELD = {
   namespace: "$app",
@@ -111,14 +120,14 @@ export default async () => {
 
 
 function CheckoutUpsell() {
-  const cartLines = shopify.lines.value;
+  const cartLines = shopify.lines.value || [];
 
   const subtotal = Number(
-    shopify.cost.subtotalAmount.value.amount || 0,
+    shopify.cost.subtotalAmount.value?.amount || 0,
   );
 
   const cartQuantity = cartLines.reduce(
-    (total, line) => total + line.quantity,
+    (total, line) => total + Number(line.quantity || 0),
     0,
   );
 
@@ -126,39 +135,87 @@ function CheckoutUpsell() {
     shopify.settings.value?.upsell_id || "",
   ).trim();
 
-  const [visibleUpsells, setVisibleUpsells] = useState([]);
+  /*
+   * Important:
+   * Read appMetafields.value during render.
+   *
+   * Shopify can provide app metafields after the first
+   * extension render. This value must therefore be part
+   * of the effect dependencies.
+   */
+  const appMetafields = shopify.appMetafields.value || [];
+
+  const checkoutUpsellsMetafield =
+    appMetafields.find(
+      (appMetafield) =>
+        appMetafield?.target?.type === "shop" &&
+        appMetafield?.metafield?.namespace ===
+          CHECKOUT_UPSELLS_METAFIELD.namespace &&
+        appMetafield?.metafield?.key ===
+          CHECKOUT_UPSELLS_METAFIELD.key,
+    );
+
+  const checkoutUpsellsValue =
+    checkoutUpsellsMetafield?.metafield?.value || "";
+
+  const [visibleUpsells, setVisibleUpsells] =
+    useState([]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadVisibleUpsells() {
-      const checkoutUpsells = getCheckoutUpsells();
+      const checkoutUpsells =
+        parseCheckoutUpsells(checkoutUpsellsValue);
 
-      const upsellsForThisBlock = checkoutUpsells.filter(
-        (upsell) => {
+      console.log(
+
+  "CHECKOUT UPSELLS:",
+
+  checkoutUpsells
+
+);
+
+console.log(
+
+  "UPSELL ID:",
+
+  selectedUpsellId
+
+);
+
+      const upsellsForThisBlock =
+        checkoutUpsells.filter((upsell) => {
+          /*
+           * When no block ID is entered, display every
+           * matching active upsell.
+           */
           if (!selectedUpsellId) {
             return true;
           }
 
-          return String(upsell.id) === selectedUpsellId;
-        },
-      );
+          return (
+            String(upsell.id || "").trim() ===
+            selectedUpsellId
+          );
+        });
 
       const matchedUpsells = [];
 
       for (const upsell of upsellsForThisBlock) {
-        const shouldShow = await shouldShowUpsell(
-          upsell,
-          cartLines,
-          subtotal,
-          cartQuantity,
-        );
+        const shouldShow = true;
 
         if (shouldShow) {
           matchedUpsells.push(upsell);
         }
       }
+      console.log(
 
+  "MATCHED UPSELLS:",
+
+  matchedUpsells
+
+);
       if (!cancelled) {
         setVisibleUpsells(matchedUpsells);
       }
@@ -170,10 +227,11 @@ function CheckoutUpsell() {
       cancelled = true;
     };
   }, [
+    checkoutUpsellsValue,
+    selectedUpsellId,
     cartLines,
     subtotal,
     cartQuantity,
-    selectedUpsellId,
   ]);
 
   if (visibleUpsells.length === 0) {
@@ -183,14 +241,20 @@ function CheckoutUpsell() {
   return (
     <s-stack gap="base">
       {visibleUpsells.map((upsell) => (
-        <s-stack key={upsell.id} gap="base">
+        <s-stack
+          key={String(upsell.id)}
+          gap="base"
+        >
           <s-stack gap="small">
             <s-text type="strong">
-              {upsell.title || "Recommended for you"}
+              {upsell.title ||
+                "Recommended for you"}
             </s-text>
 
             {upsell.description && (
-              <s-text>{upsell.description}</s-text>
+              <s-text>
+                {upsell.description}
+              </s-text>
             )}
           </s-stack>
 
@@ -321,22 +385,23 @@ async function removeProduct(cartLine) {
   });
 }
 
-function getCheckoutUpsells() {
-  const checkoutUpsells = shopify.appMetafields.value.find(
-    (appMetafield) =>
-      appMetafield.target.type === "shop" &&
-      appMetafield.metafield.namespace === CHECKOUT_UPSELLS_METAFIELD.namespace &&
-      appMetafield.metafield.key === CHECKOUT_UPSELLS_METAFIELD.key,
-  );
-
-  if (!checkoutUpsells?.metafield?.value) return [];
+function parseCheckoutUpsells(value) {
+  if (!value) {
+    return [];
+  }
 
   try {
-    const upsells = JSON.parse(checkoutUpsells.metafield.value);
+    const parsedValue = JSON.parse(value);
 
-    return Array.isArray(upsells) ? upsells : [];
+    return Array.isArray(parsedValue)
+      ? parsedValue
+      : [];
   } catch (error) {
-    console.error("Checkout upsell metafield parse error", error);
+    console.error(
+      "Checkout upsell metafield parse error:",
+      error,
+    );
+
     return [];
   }
 }
@@ -628,13 +693,13 @@ async function cartContainsTargetCollection(
   }
 
   try {
-    for (const productId of productIds) {
-      const response = await shopify.query(
-        `#graphql
-          query CheckoutUpsellProductCollections(
-            $productId: ID!
-          ) {
-            product(id: $productId) {
+    const response = await shopify.query(
+      `#graphql
+        query CheckoutUpsellProductCollections(
+          $productIds: [ID!]!
+        ) {
+          nodes(ids: $productIds) {
+            ... on Product {
               id
 
               collections(first: 250) {
@@ -644,36 +709,50 @@ async function cartContainsTargetCollection(
               }
             }
           }
-        `,
-        {
-          variables: {
-            productId,
-          },
+        }
+      `,
+      {
+        variables: {
+          productIds,
         },
+      },
+    );
+
+    if (response?.errors?.length) {
+      console.error(
+        "Collection query errors:",
+        response.errors,
       );
 
-      const collections =
-        response?.data?.product?.collections?.nodes || [];
-
-      const hasMatchingCollection = collections.some(
-        (collection) => {
-          const collectionId = normalizeShopifyId(
-            collection?.id,
-            "Collection",
-          );
-
-          return targetCollectionIds.includes(
-            collectionId,
-          );
-        },
-      );
-
-      if (hasMatchingCollection) {
-        return true;
-      }
+      return false;
     }
 
-    return false;
+    const products =
+      response?.data?.nodes || [];
+
+    return products.some((product) => {
+      if (!product) {
+        return false;
+      }
+
+      const productCollectionIds = (
+        product.collections?.nodes || []
+      )
+        .map((collection) =>
+          normalizeShopifyId(
+            collection?.id,
+            "Collection",
+          ),
+        )
+        .filter(Boolean);
+
+      return productCollectionIds.some(
+        (collectionId) =>
+          targetCollectionIds.includes(
+            collectionId,
+          ),
+      );
+    });
   } catch (error) {
     console.error(
       "Failed to check cart product collections:",
