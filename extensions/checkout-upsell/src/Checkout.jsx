@@ -341,24 +341,171 @@ function getCheckoutUpsells() {
   }
 }
 
-function shouldShowUpsell(upsell, cartLines, subtotal, cartQuantity) {
-  if (!targetMatches(upsell, cartLines)) return false;
-  if (!upsell.rules?.length) return true;
+// function shouldShowUpsell(upsell, cartLines, subtotal, cartQuantity) {
+//   if (!targetMatches(upsell, cartLines)) return false;
+//   if (!upsell.rules?.length) return true;
+
+//   return upsell.rules.every((rule) =>
+//     ruleMatches(rule, cartLines, subtotal, cartQuantity),
+//   );
+// }
+
+async function shouldShowUpsell(
+  upsell,
+  cartLines,
+  subtotal,
+  cartQuantity,
+) {
+  const matchesTarget = await targetMatches(
+    upsell,
+    cartLines,
+  );
+
+  if (!matchesTarget) {
+    return false;
+  }
+
+  if (!upsell.rules?.length) {
+    return true;
+  }
 
   return upsell.rules.every((rule) =>
-    ruleMatches(rule, cartLines, subtotal, cartQuantity),
+    ruleMatches(
+      rule,
+      cartLines,
+      subtotal,
+      cartQuantity,
+    ),
   );
 }
 
-function targetMatches(upsell, cartLines) {
-  if (upsell.targetType !== "products") return true;
+// function targetMatches(upsell, cartLines) {
+//   if (upsell.targetType !== "products") return true;
 
-  const targetProductIds = (upsell.targetProducts || []).map((product) => product.id);
-  if (targetProductIds.length === 0) return true;
+//   const targetProductIds = (upsell.targetProducts || []).map((product) => product.id);
+//   if (targetProductIds.length === 0) return true;
 
-  return cartLines.some((line) =>
-    targetProductIds.includes(line.merchandise?.product?.id),
-  );
+//   return cartLines.some((line) =>
+//     targetProductIds.includes(line.merchandise?.product?.id),
+//   );
+// }
+
+async function targetMatches(upsell, cartLines) {
+  if (upsell.targetType === "all") {
+    return true;
+  }
+
+  if (upsell.targetType === "products") {
+    const targetProductIds = (
+      upsell.targetProducts || []
+    )
+      .map((product) => String(product.id || ""))
+      .filter(Boolean);
+
+    if (targetProductIds.length === 0) {
+      return false;
+    }
+
+    return cartLines.some((line) =>
+      targetProductIds.includes(
+        String(
+          line.merchandise?.product?.id || "",
+        ),
+      ),
+    );
+  }
+
+  if (upsell.targetType === "collections") {
+    const targetCollectionIds = (
+      upsell.targetCollections || []
+    )
+      .map((collection) =>
+        String(collection.id || ""),
+      )
+      .filter(Boolean);
+
+    if (targetCollectionIds.length === 0) {
+      return false;
+    }
+
+    const cartProductIds = [
+      ...new Set(
+        cartLines
+          .map((line) =>
+            String(
+              line.merchandise?.product?.id || "",
+            ),
+          )
+          .filter(Boolean),
+      ),
+    ];
+
+    if (cartProductIds.length === 0) {
+      return false;
+    }
+
+    return cartContainsTargetCollection(
+      cartProductIds,
+      targetCollectionIds,
+    );
+  }
+
+  return true;
+}
+
+async function cartContainsTargetCollection(
+  productIds,
+  targetCollectionIds,
+) {
+  try {
+    const response = await shopify.query(
+      `#graphql
+        query CheckoutUpsellProductCollections(
+          $productIds: [ID!]!
+        ) {
+          nodes(ids: $productIds) {
+            ... on Product {
+              id
+              collections(first: 100) {
+                nodes {
+                  id
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        variables: {
+          productIds,
+        },
+      },
+    );
+
+    const nodes = response?.data?.nodes || [];
+
+    return nodes.some((product) => {
+      const productCollectionIds =
+        product?.collections?.nodes?.map(
+          (collection) =>
+            String(collection.id || ""),
+        ) || [];
+
+      return productCollectionIds.some(
+        (collectionId) =>
+          targetCollectionIds.includes(
+            collectionId,
+          ),
+      );
+    });
+  } catch (error) {
+    console.error(
+      "Failed to check cart product collections:",
+      error,
+    );
+
+    return false;
+  }
 }
 
 function ruleMatches(rule, cartLines, subtotal, cartQuantity) {
