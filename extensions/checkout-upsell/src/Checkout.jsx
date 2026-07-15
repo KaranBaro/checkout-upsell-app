@@ -619,21 +619,24 @@ async function cartContainsTargetCollection(
   targetCollectionIds,
 ) {
   if (
+    !Array.isArray(productIds) ||
     productIds.length === 0 ||
+    !Array.isArray(targetCollectionIds) ||
     targetCollectionIds.length === 0
   ) {
     return false;
   }
 
   try {
-    const response = await shopify.query(
-      `#graphql
-        query CheckoutUpsellProductCollections(
-          $productIds: [ID!]!
-        ) {
-          nodes(ids: $productIds) {
-            ... on Product {
+    for (const productId of productIds) {
+      const response = await shopify.query(
+        `#graphql
+          query CheckoutUpsellProductCollections(
+            $productId: ID!
+          ) {
+            product(id: $productId) {
               id
+
               collections(first: 250) {
                 nodes {
                   id
@@ -641,47 +644,36 @@ async function cartContainsTargetCollection(
               }
             }
           }
-        }
-      `,
-      {
-        variables: {
-          productIds,
+        `,
+        {
+          variables: {
+            productId,
+          },
         },
-      },
-    );
-
-    if (response?.errors?.length) {
-      console.error(
-        "Collection targeting GraphQL error:",
-        response.errors,
       );
 
-      return false;
-    }
+      const collections =
+        response?.data?.product?.collections?.nodes || [];
 
-    const products = (
-      response?.data?.nodes || []
-    ).filter(Boolean);
-
-    return products.some((product) => {
-      const productCollectionIds = (
-        product?.collections?.nodes || []
-      )
-        .map((collection) =>
-          normalizeShopifyId(
+      const hasMatchingCollection = collections.some(
+        (collection) => {
+          const collectionId = normalizeShopifyId(
             collection?.id,
             "Collection",
-          ),
-        )
-        .filter(Boolean);
+          );
 
-      return productCollectionIds.some(
-        (collectionId) =>
-          targetCollectionIds.includes(
+          return targetCollectionIds.includes(
             collectionId,
-          ),
+          );
+        },
       );
-    });
+
+      if (hasMatchingCollection) {
+        return true;
+      }
+    }
+
+    return false;
   } catch (error) {
     console.error(
       "Failed to check cart product collections:",
