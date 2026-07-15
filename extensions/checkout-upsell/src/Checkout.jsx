@@ -390,37 +390,193 @@ async function shouldShowUpsell(
 //   );
 // }
 
+// async function targetMatches(upsell, cartLines) {
+//   if (upsell.targetType === "all") {
+//     return true;
+//   }
+
+//   if (upsell.targetType === "products") {
+//     const targetProductIds = (
+//       upsell.targetProducts || []
+//     )
+//       .map((product) => String(product.id || ""))
+//       .filter(Boolean);
+
+//     if (targetProductIds.length === 0) {
+//       return false;
+//     }
+
+//     return cartLines.some((line) =>
+//       targetProductIds.includes(
+//         String(
+//           line.merchandise?.product?.id || "",
+//         ),
+//       ),
+//     );
+//   }
+
+//   if (upsell.targetType === "collections") {
+//     const targetCollectionIds = (
+//       upsell.targetCollections || []
+//     )
+//       .map((collection) =>
+//         String(collection.id || ""),
+//       )
+//       .filter(Boolean);
+
+//     if (targetCollectionIds.length === 0) {
+//       return false;
+//     }
+
+//     const cartProductIds = [
+//       ...new Set(
+//         cartLines
+//           .map((line) =>
+//             String(
+//               line.merchandise?.product?.id || "",
+//             ),
+//           )
+//           .filter(Boolean),
+//       ),
+//     ];
+
+//     if (cartProductIds.length === 0) {
+//       return false;
+//     }
+
+//     return cartContainsTargetCollection(
+//       cartProductIds,
+//       targetCollectionIds,
+//     );
+//   }
+
+//   return true;
+// }
+
+// async function cartContainsTargetCollection(
+//   productIds,
+//   targetCollectionIds,
+// ) {
+//   try {
+//     const response = await shopify.query(
+//       `#graphql
+//         query CheckoutUpsellProductCollections(
+//           $productIds: [ID!]!
+//         ) {
+//           nodes(ids: $productIds) {
+//             ... on Product {
+//               id
+//               collections(first: 100) {
+//                 nodes {
+//                   id
+//                 }
+//               }
+//             }
+//           }
+//         }
+//       `,
+//       {
+//         variables: {
+//           productIds,
+//         },
+//       },
+//     );
+
+//     const nodes = response?.data?.nodes || [];
+
+//     return nodes.some((product) => {
+//       const productCollectionIds =
+//         product?.collections?.nodes?.map(
+//           (collection) =>
+//             String(collection.id || ""),
+//         ) || [];
+
+//       return productCollectionIds.some(
+//         (collectionId) =>
+//           targetCollectionIds.includes(
+//             collectionId,
+//           ),
+//       );
+//     });
+//   } catch (error) {
+//     console.error(
+//       "Failed to check cart product collections:",
+//       error,
+//     );
+
+//     return false;
+//   }
+// }
+
 async function targetMatches(upsell, cartLines) {
-  if (upsell.targetType === "all") {
+  const targetType = String(
+    upsell.targetType || "all",
+  ).toLowerCase();
+
+  /*
+   * All-products targeting
+   */
+  if (
+    targetType === "all" ||
+    targetType === "allproducts" ||
+    targetType === "all-products"
+  ) {
     return true;
   }
 
-  if (upsell.targetType === "products") {
+  /*
+   * Specific-product targeting
+   */
+  if (
+    targetType === "products" ||
+    targetType === "product"
+  ) {
     const targetProductIds = (
       upsell.targetProducts || []
     )
-      .map((product) => String(product.id || ""))
+      .map((product) =>
+        normalizeShopifyId(
+          product?.id ||
+            product?.value ||
+            product?.admin_graphql_api_id,
+          "Product",
+        ),
+      )
       .filter(Boolean);
 
     if (targetProductIds.length === 0) {
       return false;
     }
 
-    return cartLines.some((line) =>
-      targetProductIds.includes(
-        String(
-          line.merchandise?.product?.id || "",
-        ),
-      ),
-    );
+    return cartLines.some((line) => {
+      const cartProductId = normalizeShopifyId(
+        line.merchandise?.product?.id,
+        "Product",
+      );
+
+      return targetProductIds.includes(
+        cartProductId,
+      );
+    });
   }
 
-  if (upsell.targetType === "collections") {
+  /*
+   * Collection targeting
+   */
+  if (
+    targetType === "collections" ||
+    targetType === "collection"
+  ) {
     const targetCollectionIds = (
       upsell.targetCollections || []
     )
       .map((collection) =>
-        String(collection.id || ""),
+        normalizeShopifyId(
+          collection?.id ||
+            collection?.value ||
+            collection?.admin_graphql_api_id,
+          "Collection",
+        ),
       )
       .filter(Boolean);
 
@@ -432,8 +588,9 @@ async function targetMatches(upsell, cartLines) {
       ...new Set(
         cartLines
           .map((line) =>
-            String(
-              line.merchandise?.product?.id || "",
+            normalizeShopifyId(
+              line.merchandise?.product?.id,
+              "Product",
             ),
           )
           .filter(Boolean),
@@ -444,19 +601,30 @@ async function targetMatches(upsell, cartLines) {
       return false;
     }
 
-    return cartContainsTargetCollection(
+    return await cartContainsTargetCollection(
       cartProductIds,
       targetCollectionIds,
     );
   }
 
-  return true;
+  /*
+   * Do not show an upsell when an unsupported
+   * target type is saved.
+   */
+  return false;
 }
 
 async function cartContainsTargetCollection(
   productIds,
   targetCollectionIds,
 ) {
+  if (
+    productIds.length === 0 ||
+    targetCollectionIds.length === 0
+  ) {
+    return false;
+  }
+
   try {
     const response = await shopify.query(
       `#graphql
@@ -466,7 +634,7 @@ async function cartContainsTargetCollection(
           nodes(ids: $productIds) {
             ... on Product {
               id
-              collections(first: 100) {
+              collections(first: 250) {
                 nodes {
                   id
                 }
@@ -482,14 +650,30 @@ async function cartContainsTargetCollection(
       },
     );
 
-    const nodes = response?.data?.nodes || [];
+    if (response?.errors?.length) {
+      console.error(
+        "Collection targeting GraphQL error:",
+        response.errors,
+      );
 
-    return nodes.some((product) => {
-      const productCollectionIds =
-        product?.collections?.nodes?.map(
-          (collection) =>
-            String(collection.id || ""),
-        ) || [];
+      return false;
+    }
+
+    const products = (
+      response?.data?.nodes || []
+    ).filter(Boolean);
+
+    return products.some((product) => {
+      const productCollectionIds = (
+        product?.collections?.nodes || []
+      )
+        .map((collection) =>
+          normalizeShopifyId(
+            collection?.id,
+            "Collection",
+          ),
+        )
+        .filter(Boolean);
 
       return productCollectionIds.some(
         (collectionId) =>
@@ -506,6 +690,30 @@ async function cartContainsTargetCollection(
 
     return false;
   }
+}
+
+function normalizeShopifyId(value, resourceType) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const id = String(value).trim();
+
+  if (!id) {
+    return "";
+  }
+
+  if (id.startsWith("gid://shopify/")) {
+    return id;
+  }
+
+  const numericId = id.match(/\d+$/)?.[0];
+
+  if (!numericId) {
+    return id;
+  }
+
+  return `gid://shopify/${resourceType}/${numericId}`;
 }
 
 function ruleMatches(rule, cartLines, subtotal, cartQuantity) {
